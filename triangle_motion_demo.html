@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>直角三角形动态示意图</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --panel: rgba(255, 252, 246, 0.92);
+      --ink: #1f2937;
+      --muted: #5b6472;
+      --line: #8a8174;
+      --accent: #c45b38;
+      --accent-2: #1f6f78;
+      --accent-3: #c98d22;
+      --border: rgba(31, 41, 55, 0.12);
+      --shadow: 0 18px 40px rgba(31, 41, 55, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(201, 141, 34, 0.12), transparent 30%),
+        radial-gradient(circle at top right, rgba(31, 111, 120, 0.12), transparent 28%),
+        linear-gradient(180deg, #fbf8f1 0%, var(--bg) 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .shell {
+      width: min(980px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 20px 24px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .header p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .content {
+      padding: 18px 20px 24px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .problem {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.66);
+      padding: 14px 16px;
+    }
+
+    .problem h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .problem p {
+      margin: 0 0 8px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--ink);
+    }
+
+    .problem p:last-child {
+      margin-bottom: 0;
+    }
+
+    .canvas-wrap {
+      border-radius: 16px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 243, 235, 0.95));
+      border: 1px solid var(--border);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 10;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+      padding: 4px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 88px 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .row label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .value {
+      min-width: 92px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      background: #ece6dc;
+      color: var(--ink);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.66);
+    }
+
+    .card .k {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card .v {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card.equal {
+      background: rgba(196, 91, 56, 0.14);
+      border-color: rgba(196, 91, 56, 0.35);
+      box-shadow: inset 0 0 0 1px rgba(196, 91, 56, 0.18);
+    }
+
+    .card.equal .v {
+      color: var(--accent);
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 14px;
+      }
+
+      .header h1 {
+        font-size: 20px;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      .value {
+        text-align: left;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="header">
+      <h1>直角三角形动态示意图</h1>
+      <p>点 M 以速度 1 从 A 出发沿 A-C-B 运动，点 N 以速度 3 从 B 出发沿 B-C-A 运动。时间可手动拖动，也可自动播放。</p>
+    </section>
+
+    <section class="content">
+      <section class="problem" aria-label="题目描述">
+        <h2>题目描述</h2>
+        <p>已知一条水平直线 <strong>l</strong>，在其上方有直角三角形 <strong>ABC</strong>。其中 <strong>C</strong> 为直角顶点，且点 <strong>C</strong> 在直线 <strong>l</strong> 上；斜边 <strong>AB</strong> 位于直线 <strong>l</strong> 上方。已知 <strong>AC = 7</strong>，<strong>BC = 11</strong>。</p>
+        <p>设边 <strong>AC</strong> 与水平方向的夹角为 <strong>α</strong>，初始值为 <strong>35°</strong>。</p>
+        <p>点 <strong>M</strong> 从点 <strong>A</strong> 出发，沿折线 <strong>A → C → B</strong> 运动，速度为 <strong>1</strong>；点 <strong>N</strong> 从点 <strong>B</strong> 出发，沿折线 <strong>B → C → A</strong> 运动，速度为 <strong>3</strong>。点 <strong>M</strong> 到达 <strong>B</strong> 时停止，点 <strong>N</strong> 到达 <strong>A</strong> 时停止。</p>
+        <p>过点 <strong>M</strong> 向直线 <strong>l</strong> 作垂线，垂足为 <strong>E</strong>；过点 <strong>N</strong> 向直线 <strong>l</strong> 作垂线，垂足为 <strong>F</strong>。</p>
+        <p>研究运动过程中 <strong>ME</strong>、<strong>NF</strong>、<strong>MC</strong>、<strong>NC</strong> 的变化情况，以及 <strong>MC</strong> 与 <strong>NC</strong> 何时相等。</p>
+      </section>
+
+      <div class="canvas-wrap">
+        <canvas id="scene" width="1200" height="750" aria-label="几何示意图"></canvas>
+      </div>
+
+      <div class="controls">
+        <div class="row">
+          <label for="timeRange">时间 t</label>
+          <input id="timeRange" type="range" min="0" max="18" step="0.01" value="0">
+          <div class="value" id="timeValue">0.00</div>
+        </div>
+
+        <div class="row">
+          <label for="alphaRange">角度 α</label>
+          <input id="alphaRange" type="range" min="10" max="80" step="1" value="35">
+          <div class="value" id="alphaValue">35°</div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="playBtn">自动播放</button>
+          <button class="secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <div class="stats">
+          <div class="card">
+            <span class="k">M 位置</span>
+            <span class="v" id="mState">A 点</span>
+          </div>
+          <div class="card">
+            <span class="k">N 位置</span>
+            <span class="v" id="nState">B 点</span>
+          </div>
+          <div class="card">
+            <span class="k">MC</span>
+            <span class="v" id="mcValue">7.00</span>
+          </div>
+          <div class="card">
+            <span class="k">NC</span>
+            <span class="v" id="ncValue">11.00</span>
+          </div>
+          <div class="card" id="equalCard">
+            <span class="k">MC 与 NC</span>
+            <span class="v" id="equalState">未相等</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const AC = 7;
+    const BC = 11;
+    const SPEED_M = 1;
+    const SPEED_N = 3;
+    const TOTAL_PATH = AC + BC;
+    const STOP_M = TOTAL_PATH / SPEED_M;
+    const STOP_N = TOTAL_PATH / SPEED_N;
+
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const controls = {
+      timeRange: document.getElementById("timeRange"),
+      alphaRange: document.getElementById("alphaRange"),
+      playBtn: document.getElementById("playBtn"),
+      resetBtn: document.getElementById("resetBtn")
+    };
+    const readout = {
+      timeValue: document.getElementById("timeValue"),
+      alphaValue: document.getElementById("alphaValue"),
+      mState: document.getElementById("mState"),
+      nState: document.getElementById("nState"),
+      mcValue: document.getElementById("mcValue"),
+      ncValue: document.getElementById("ncValue"),
+      equalState: document.getElementById("equalState"),
+      equalCard: document.getElementById("equalCard")
+    };
+
+    let currentTime = 0;
+    let isPlaying = false;
+    let rafId = 0;
+    let lastFrame = 0;
+    const EQUALITY_EPS = 0.08;
+    const PAUSE_ON_EQUAL_MS = 700;
+    const EXACT_EQUAL_TIMES = getExactEqualTimes();
+    let pauseUntil = 0;
+    let pausedEqualIndex = -1;
+
+    function getExactEqualTimes() {
+      const candidates = [
+        (BC - AC) / (SPEED_N - SPEED_M),
+        (BC + AC) / (SPEED_N + SPEED_M),
+        STOP_N + AC
+      ];
+      return candidates
+        .filter((time) => time >= 0 && time <= STOP_M)
+        .sort((a, b) => a - b)
+        .filter((time, index, list) => index === 0 || Math.abs(time - list[index - 1]) > 1e-9);
+    }
+
+    function point(x, y) {
+      return { x, y };
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function mix(p1, p2, t) {
+      return point(lerp(p1.x, p2.x, t), lerp(p1.y, p2.y, t));
+    }
+
+    function getGeometry() {
+      const alpha = Number(controls.alphaRange.value) * Math.PI / 180;
+      const C = point(0, 0);
+      const A = point(-AC * Math.cos(alpha), AC * Math.sin(alpha));
+      const B = point(BC * Math.sin(alpha), BC * Math.cos(alpha));
+      return { alpha, A, B, C };
+    }
+
+    function pointOnBrokenLine(distance, p1, p2, p3, len12, len23) {
+      if (distance <= 0) return p1;
+      if (distance < len12) return mix(p1, p2, distance / len12);
+      if (distance < len12 + len23) return mix(p2, p3, (distance - len12) / len23);
+      return p3;
+    }
+
+    function getPositions(geometry, t) {
+      const dM = Math.min(Math.max(t, 0) * SPEED_M, TOTAL_PATH);
+      const dN = Math.min(Math.max(t, 0) * SPEED_N, TOTAL_PATH);
+      const M = pointOnBrokenLine(dM, geometry.A, geometry.C, geometry.B, AC, BC);
+      const N = pointOnBrokenLine(dN, geometry.B, geometry.C, geometry.A, BC, AC);
+      const mc = dM <= AC ? AC - dM : dM - AC;
+      const nc = dN <= BC ? BC - dN : dN - BC;
+      return {
+        M,
+        N,
+        E: point(M.x, 0),
+        F: point(N.x, 0),
+        mc,
+        nc,
+        dM,
+        dN
+      };
+    }
+
+    function getTransform(geometry) {
+      const points = [geometry.A, geometry.B, geometry.C];
+      const minX = Math.min(...points.map((p) => p.x), -8);
+      const maxX = Math.max(...points.map((p) => p.x), 8);
+      const maxY = Math.max(...points.map((p) => p.y), 1);
+      const padX = 2.5;
+      const padTop = 2.4;
+      const padBottom = 2.4;
+      const world = {
+        minX: minX - padX,
+        maxX: maxX + padX,
+        minY: -padBottom,
+        maxY: maxY + padTop
+      };
+      const width = world.maxX - world.minX;
+      const height = world.maxY - world.minY;
+      return function toCanvas(p) {
+        const x = ((p.x - world.minX) / width) * canvas.width;
+        const y = canvas.height - ((p.y - world.minY) / height) * canvas.height;
+        return point(x, y);
+      };
+    }
+
+    function drawLine(p1, p2, options = {}) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineWidth = options.width || 2;
+      ctx.strokeStyle = options.stroke || "#1f2937";
+      if (options.dash) ctx.setLineDash(options.dash);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPoint(p, label, color) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+      ctx.fillStyle = "#1f2937";
+      ctx.font = "600 22px sans-serif";
+      ctx.fillText(label, p.x + 12, p.y - 12);
+      ctx.restore();
+    }
+
+    function drawSegmentLabel(p1, p2, text, color, offsetY = -10) {
+      const mid = point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.font = "600 20px sans-serif";
+      ctx.fillText(text, mid.x + 8, mid.y + offsetY);
+      ctx.restore();
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function drawValueTag(anchor, text, color, dx, dy) {
+      ctx.save();
+      ctx.font = "600 18px sans-serif";
+      const paddingX = 12;
+      const paddingY = 8;
+      const textWidth = ctx.measureText(text).width;
+      const boxWidth = textWidth + paddingX * 2;
+      const boxHeight = 36;
+      const x = clamp(anchor.x + dx, 12, canvas.width - boxWidth - 12);
+      const y = clamp(anchor.y + dy, 12, canvas.height - boxHeight - 12);
+      ctx.fillStyle = "rgba(255, 252, 246, 0.96)";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, boxWidth, boxHeight, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.fillText(text, x + paddingX, y + boxHeight / 2 + 6);
+      ctx.restore();
+    }
+
+    function drawRightAngle(C, A, B) {
+      const u1 = point((A.x - C.x) / AC, (A.y - C.y) / AC);
+      const u2 = point((B.x - C.x) / BC, (B.y - C.y) / BC);
+      const size = 26;
+      const p1 = point(C.x + u1.x * size, C.y + u1.y * size);
+      const p2 = point(p1.x + u2.x * size, p1.y + u2.y * size);
+      const p3 = point(C.x + u2.x * size, C.y + u2.y * size);
+      drawLine(C, p1, { stroke: "#6b7280", width: 2 });
+      drawLine(p1, p2, { stroke: "#6b7280", width: 2 });
+      drawLine(p2, p3, { stroke: "#6b7280", width: 2 });
+    }
+
+    function drawAngleMark(C, A, toCanvas) {
+      const c = toCanvas(C);
+      const a = toCanvas(A);
+      const radius = 48;
+      const start = Math.PI;
+      let end = Math.atan2(a.y - c.y, a.x - c.x);
+      if (end < 0) end += Math.PI * 2;
+      const mid = (start + end) / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, radius, start, end, false);
+      ctx.strokeStyle = "#c98d22";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = "#8a5b00";
+      ctx.font = "600 20px sans-serif";
+      ctx.fillText("α", c.x + Math.cos(mid) * (radius + 18) - 6, c.y + Math.sin(mid) * (radius + 18) + 6);
+      ctx.restore();
+    }
+
+    function updateReadout(positions) {
+      const EPS = 1e-6;
+      const isEqual = Math.abs(positions.mc - positions.nc) <= EQUALITY_EPS;
+      readout.timeValue.textContent = currentTime.toFixed(2);
+      readout.alphaValue.textContent = `${controls.alphaRange.value}°`;
+      readout.mState.textContent = positions.dM >= TOTAL_PATH - EPS ? "B 点" : positions.dM <= EPS ? "A 点" : Math.abs(positions.dM - AC) <= EPS ? "C 点" : positions.dM < AC ? "AC 边上" : "CB 边上";
+      readout.nState.textContent = positions.dN >= TOTAL_PATH - EPS ? "A 点" : positions.dN <= EPS ? "B 点" : Math.abs(positions.dN - BC) <= EPS ? "C 点" : positions.dN < BC ? "BC 边上" : "CA 边上";
+      readout.mcValue.textContent = positions.mc.toFixed(2);
+      readout.ncValue.textContent = positions.nc.toFixed(2);
+      readout.equalState.textContent = isEqual ? `相等 ±${EQUALITY_EPS.toFixed(2)}` : "未相等";
+      readout.equalCard.classList.toggle("equal", isEqual);
+    }
+
+    function render() {
+      const geometry = getGeometry();
+      const positions = getPositions(geometry, currentTime);
+      const toCanvas = getTransform(geometry);
+      const A = toCanvas(geometry.A);
+      const B = toCanvas(geometry.B);
+      const C = toCanvas(geometry.C);
+      const M = toCanvas(positions.M);
+      const N = toCanvas(positions.N);
+      const E = toCanvas(positions.E);
+      const F = toCanvas(positions.F);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const lineLeft = toCanvas(point(geometry.C.x - 15, 0));
+      const lineRight = toCanvas(point(geometry.C.x + 15, 0));
+      drawLine(lineLeft, lineRight, { stroke: "#7c6f64", width: 3 });
+
+      ctx.save();
+      ctx.fillStyle = "#5b6472";
+      ctx.font = "italic 22px serif";
+      ctx.fillText("l", lineRight.x - 20, lineRight.y - 12);
+      ctx.restore();
+
+      drawLine(A, C, { stroke: "#1f6f78", width: 4 });
+      drawLine(C, B, { stroke: "#1f6f78", width: 4 });
+      drawLine(A, B, { stroke: "#c45b38", width: 4 });
+
+      drawRightAngle(C, A, B);
+      drawAngleMark(geometry.C, geometry.A, toCanvas);
+
+      drawLine(M, E, { stroke: "#c45b38", width: 2, dash: [8, 8] });
+      drawLine(N, F, { stroke: "#c98d22", width: 2, dash: [8, 8] });
+
+      drawPoint(A, "A", "#1f6f78");
+      drawPoint(B, "B", "#1f6f78");
+      drawPoint(C, "C", "#1f6f78");
+      drawPoint(M, "M", "#c45b38");
+      drawPoint(N, "N", "#c98d22");
+      drawPoint(E, "E", "#c45b38");
+      drawPoint(F, "F", "#c98d22");
+
+      drawSegmentLabel(A, C, "AC = 7", "#1f6f78", -16);
+      drawSegmentLabel(C, B, "BC = 11", "#1f6f78", -16);
+      drawSegmentLabel(A, B, "AB", "#c45b38", -18);
+      drawSegmentLabel(M, E, "ME", "#c45b38", -12);
+      drawSegmentLabel(N, F, "NF", "#c98d22", -12);
+      drawValueTag(point((M.x + C.x) / 2, (M.y + C.y) / 2), `MC = ${positions.mc.toFixed(2)}`, "#c45b38", M.x <= C.x ? -120 : 22, -54);
+      drawValueTag(point((N.x + C.x) / 2, (N.y + C.y) / 2), `NC = ${positions.nc.toFixed(2)}`, "#c98d22", N.x >= C.x ? 22 : -120, 18);
+
+      updateReadout(positions);
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      controls.playBtn.textContent = "自动播放";
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      resetPlaybackMarkers();
+    }
+
+    function resetPlaybackMarkers() {
+      lastFrame = 0;
+      pauseUntil = 0;
+      pausedEqualIndex = -1;
+    }
+
+    function nextEqualTimeIndex(fromTime, toTime) {
+      for (let i = 0; i < EXACT_EQUAL_TIMES.length; i += 1) {
+        const equalTime = EXACT_EQUAL_TIMES[i];
+        if (i <= pausedEqualIndex) continue;
+        if (equalTime > fromTime && equalTime <= toTime) return i;
+      }
+      return -1;
+    }
+
+    function latestPassedEqualIndex(time) {
+      let index = -1;
+      for (let i = 0; i < EXACT_EQUAL_TIMES.length; i += 1) {
+        if (EXACT_EQUAL_TIMES[i] < time) index = i;
+      }
+      return index;
+    }
+
+    function tick(timestamp) {
+      if (!isPlaying) return;
+      if (pauseUntil && timestamp < pauseUntil) {
+        rafId = requestAnimationFrame(tick);
+        return;
+      }
+      if (pauseUntil && timestamp >= pauseUntil) {
+        pauseUntil = 0;
+        lastFrame = timestamp;
+      }
+      if (!lastFrame) lastFrame = timestamp;
+      const delta = (timestamp - lastFrame) / 1000;
+      lastFrame = timestamp;
+      const nextTime = Math.min(STOP_M, currentTime + delta);
+      const equalIndex = nextEqualTimeIndex(currentTime, nextTime);
+      if (equalIndex !== -1) {
+        currentTime = EXACT_EQUAL_TIMES[equalIndex];
+        pausedEqualIndex = equalIndex;
+        pauseUntil = timestamp + PAUSE_ON_EQUAL_MS;
+      } else {
+        currentTime = nextTime;
+      }
+      controls.timeRange.value = currentTime.toFixed(2);
+      render();
+      if (currentTime >= STOP_M) {
+        stopPlayback();
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function syncPlaybackMarkers() {
+      pauseUntil = 0;
+      pausedEqualIndex = latestPassedEqualIndex(currentTime);
+    }
+
+    controls.timeRange.addEventListener("input", () => {
+      currentTime = Number(controls.timeRange.value);
+      syncPlaybackMarkers();
+      render();
+    });
+
+    controls.alphaRange.addEventListener("input", () => {
+      syncPlaybackMarkers();
+      render();
+    });
+
+    controls.playBtn.addEventListener("click", () => {
+      if (isPlaying) {
+        stopPlayback();
+        return;
+      }
+      if (currentTime >= STOP_M) {
+        currentTime = 0;
+        controls.timeRange.value = "0";
+      }
+      isPlaying = true;
+      controls.playBtn.textContent = "暂停";
+      lastFrame = 0;
+      rafId = requestAnimationFrame(tick);
+    });
+
+    controls.resetBtn.addEventListener("click", () => {
+      stopPlayback();
+      currentTime = 0;
+      controls.timeRange.value = "0";
+      controls.alphaRange.value = "35";
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
