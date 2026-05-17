@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>识别距离最小值动态演示</title>
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --paper: #fffdf8;
+      --ink: #1e2930;
+      --muted: #66727d;
+      --grid: rgba(91, 106, 116, 0.18);
+      --axis: #2f3d46;
+      --line: #24737f;
+      --point: #d15f3f;
+      --gold: #b98521;
+      --green: #47735d;
+      --border: rgba(30, 41, 48, 0.12);
+      --shadow: 0 22px 56px rgba(38, 45, 52, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(36, 115, 127, 0.10), transparent 34%),
+        linear-gradient(315deg, rgba(209, 95, 63, 0.10), transparent 30%),
+        var(--bg);
+      padding: 24px;
+    }
+
+    .shell {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    header {
+      background: rgba(255, 253, 248, 0.88);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+      padding: 22px 24px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .formula {
+      color: var(--ink);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.42fr) minmax(320px, 0.58fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .stage {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .canvas-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      border-radius: 999px;
+      background: rgba(36, 115, 127, 0.10);
+      color: var(--line);
+      padding: 6px 12px;
+      font-weight: 700;
+    }
+
+    .badge::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    canvas {
+      width: 100%;
+      display: block;
+      aspect-ratio: 16 / 10;
+      background: #fffefa;
+    }
+
+    .panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .metrics,
+    .controls,
+    .steps {
+      background: rgba(255, 253, 248, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.62);
+      min-height: 86px;
+    }
+
+    .metric.wide {
+      grid-column: 1 / -1;
+    }
+
+    .metric.active {
+      border-color: rgba(209, 95, 63, 0.48);
+      background: rgba(209, 95, 63, 0.10);
+    }
+
+    .metric.best {
+      border-color: rgba(185, 133, 33, 0.54);
+      background: rgba(185, 133, 33, 0.12);
+    }
+
+    .k {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .v {
+      display: block;
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sub {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 52px 1fr 64px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    label {
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--line);
+    }
+
+    .readout {
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 13px;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    button {
+      min-height: 40px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: #edf1ef;
+      color: var(--ink);
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(36, 115, 127, 0.24);
+    }
+
+    button.primary {
+      background: var(--line);
+      color: #fff;
+    }
+
+    button.gold {
+      background: rgba(185, 133, 33, 0.16);
+      color: #684910;
+    }
+
+    .steps h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 0;
+      border-top: 1px solid rgba(30, 41, 48, 0.09);
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .step:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--axis);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .step.hot {
+      color: var(--ink);
+      font-weight: 650;
+    }
+
+    .step.hot .dot {
+      background: var(--point);
+    }
+
+    .step.best .dot {
+      background: var(--gold);
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 14px;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      header {
+        padding: 18px;
+      }
+
+      .canvas-bar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .control-row,
+      .buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .readout {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1>点到直线的识别距离最小值</h1>
+      <p class="lead">
+        在平面直角坐标系中，定义两点的“识别距离”为横坐标差与纵坐标差中的较大者。
+        已知 <span class="formula">D(0, 1)</span>，直线上的动点为
+        <span class="formula">P(m, 3m/4 + 3)</span>。本演示求
+        <span class="formula">max(|m|, |3m/4 + 2|)</span> 的最小值，并展示状态如何从“纵向差主导”切换到“横向差主导”。
+      </p>
+    </header>
+
+    <main>
+      <section class="stage" aria-label="坐标系动态演示">
+        <div class="canvas-bar">
+          <span>直线：y = 3x/4 + 3；固定点：D(0, 1)</span>
+          <span class="badge" id="stateBadge">纵向差决定识别距离</span>
+        </div>
+        <canvas id="plane" width="1120" height="700"></canvas>
+      </section>
+
+      <aside class="panel">
+        <section class="metrics" aria-label="当前数值">
+          <div class="metric" id="dxCard">
+            <span class="k">横向距离 |Δx|</span>
+            <span class="v" id="dxValue">0</span>
+            <span class="sub">D.x 与 P.x 的差</span>
+          </div>
+          <div class="metric" id="dyCard">
+            <span class="k">纵向距离 |Δy|</span>
+            <span class="v" id="dyValue">0</span>
+            <span class="sub">D.y 与 P.y 的差</span>
+          </div>
+          <div class="metric wide" id="distanceCard">
+            <span class="k">识别距离 max(|Δx|, |Δy|)</span>
+            <span class="v" id="distValue">0</span>
+            <span class="sub" id="distNote">取两者中较大的数值</span>
+          </div>
+          <div class="metric wide best">
+            <span class="k">最小值与取值点</span>
+            <span class="v">8/7</span>
+            <span class="sub">当 m = -8/7 时，P = (-8/7, 15/7)，此时 |Δx| = |Δy| = 8/7。</span>
+          </div>
+        </section>
+
+        <section class="controls" aria-label="动画控制">
+          <div class="control-row">
+            <label for="mSlider">m</label>
+            <input id="mSlider" type="range" min="-5" max="3" step="0.001" value="-4.2">
+            <span class="readout" id="mReadout">-4.200</span>
+          </div>
+          <div class="buttons">
+            <button class="primary" id="playBtn" type="button">暂停</button>
+            <button id="reverseBtn" type="button">反向</button>
+            <button class="gold" id="bestBtn" type="button">定位极值</button>
+          </div>
+        </section>
+
+        <section class="steps" aria-label="解题过程">
+          <h2>推导过程</h2>
+          <div class="step" id="step1">
+            <span class="dot">1</span>
+            <span>把直线上的任意点写成 P(m, 3m/4 + 3)。</span>
+          </div>
+          <div class="step" id="step2">
+            <span class="dot">2</span>
+            <span>相对 D(0, 1)，横向差为 |m|，纵向差为 |3m/4 + 2|。</span>
+          </div>
+          <div class="step" id="step3">
+            <span class="dot">3</span>
+            <span>识别距离是两者最大值；想让最大值尽量小，临界时两者相等。</span>
+          </div>
+          <div class="step best" id="step4">
+            <span class="dot">4</span>
+            <span>在最优区间内，-m = 3m/4 + 2，得到 m = -8/7，最小识别距离为 8/7。</span>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("plane");
+    const ctx = canvas.getContext("2d");
+    const slider = document.getElementById("mSlider");
+    const playBtn = document.getElementById("playBtn");
+    const reverseBtn = document.getElementById("reverseBtn");
+    const bestBtn = document.getElementById("bestBtn");
+    const mReadout = document.getElementById("mReadout");
+    const dxValue = document.getElementById("dxValue");
+    const dyValue = document.getElementById("dyValue");
+    const distValue = document.getElementById("distValue");
+    const distNote = document.getElementById("distNote");
+    const stateBadge = document.getElementById("stateBadge");
+    const dxCard = document.getElementById("dxCard");
+    const dyCard = document.getElementById("dyCard");
+    const distanceCard = document.getElementById("distanceCard");
+    const steps = [...document.querySelectorAll(".step")];
+
+    const minM = -5;
+    const maxM = 3;
+    const bestM = -8 / 7;
+    const bestY = 15 / 7;
+    const bestDist = 8 / 7;
+    let m = Number(slider.value);
+    let playing = true;
+    let direction = 1;
+    let lastTime = 0;
+
+    const world = {
+      minX: -5.4,
+      maxX: 3.4,
+      minY: -1.2,
+      maxY: 6.2,
+      pad: 54
+    };
+
+    function fmt(value) {
+      const rounded = Math.round(value * 1000) / 1000;
+      return Math.abs(rounded) < 0.0005 ? "0" : rounded.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+    }
+
+    function fractionHint(value, kind) {
+      if (Math.abs(value - bestDist) < 0.006) return "8/7";
+      if (kind === "m" && Math.abs(value - bestM) < 0.006) return "-8/7";
+      return fmt(value);
+    }
+
+    function pointFromM(value) {
+      return { x: value, y: 0.75 * value + 3 };
+    }
+
+    function measure(value) {
+      const p = pointFromM(value);
+      const dx = Math.abs(p.x);
+      const dy = Math.abs(p.y - 1);
+      return { p, dx, dy, dist: Math.max(dx, dy), nearBest: Math.abs(value - bestM) < 0.035 };
+    }
+
+    function plotMetrics() {
+      const rangeX = world.maxX - world.minX;
+      const rangeY = world.maxY - world.minY;
+      const usableW = canvas.width - world.pad * 2;
+      const usableH = canvas.height - world.pad * 2;
+      const scale = Math.min(usableW / rangeX, usableH / rangeY);
+      const plotW = rangeX * scale;
+      const plotH = rangeY * scale;
+      return {
+        scale,
+        left: (canvas.width - plotW) / 2,
+        bottom: (canvas.height + plotH) / 2
+      };
+    }
+
+    function xToPx(x) {
+      const metrics = plotMetrics();
+      return metrics.left + (x - world.minX) * metrics.scale;
+    }
+
+    function yToPx(y) {
+      const metrics = plotMetrics();
+      return metrics.bottom - (y - world.minY) * metrics.scale;
+    }
+
+    function drawLine(x1, y1, x2, y2, style) {
+      ctx.save();
+      Object.assign(ctx, style);
+      ctx.beginPath();
+      ctx.moveTo(xToPx(x1), yToPx(y1));
+      ctx.lineTo(xToPx(x2), yToPx(y2));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawLabel(text, x, y, color, align = "center") {
+      ctx.save();
+      ctx.font = "600 17px PingFang SC, Microsoft YaHei, Arial";
+      ctx.fillStyle = color;
+      ctx.textAlign = align;
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, xToPx(x), yToPx(y));
+      ctx.restore();
+    }
+
+    function drawPoint(x, y, color, label, radius = 7) {
+      const px = xToPx(x);
+      const py = yToPx(y);
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "#fffefa";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(px, py, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = "700 17px PingFang SC, Microsoft YaHei, Arial";
+      ctx.fillText(label, px + 12, py - 12);
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--grid");
+      for (let x = Math.ceil(world.minX); x <= world.maxX; x += 1) {
+        drawLine(x, world.minY, x, world.maxY, { strokeStyle: ctx.strokeStyle, lineWidth: 1 });
+      }
+      for (let y = Math.ceil(world.minY); y <= world.maxY; y += 1) {
+        drawLine(world.minX, y, world.maxX, y, { strokeStyle: ctx.strokeStyle, lineWidth: 1 });
+      }
+      drawLine(world.minX, 0, world.maxX, 0, { strokeStyle: "#2f3d46", lineWidth: 2 });
+      drawLine(0, world.minY, 0, world.maxY, { strokeStyle: "#2f3d46", lineWidth: 2 });
+
+      ctx.fillStyle = "#66727d";
+      ctx.font = "12px PingFang SC, Microsoft YaHei, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      for (let x = Math.ceil(world.minX); x <= world.maxX; x += 1) {
+        if (x !== 0) ctx.fillText(String(x), xToPx(x), yToPx(0) + 8);
+      }
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      for (let y = Math.ceil(world.minY); y <= world.maxY; y += 1) {
+        if (y !== 0) ctx.fillText(String(y), xToPx(0) - 8, yToPx(y));
+      }
+      ctx.restore();
+    }
+
+    function drawChebyshevSquare(p, dist, nearBest) {
+      const left = -dist;
+      const right = dist;
+      const bottom = 1 - dist;
+      const top = 1 + dist;
+      ctx.save();
+      ctx.fillStyle = nearBest ? "rgba(185, 133, 33, 0.10)" : "rgba(36, 115, 127, 0.08)";
+      ctx.strokeStyle = nearBest ? "rgba(185, 133, 33, 0.86)" : "rgba(36, 115, 127, 0.55)";
+      ctx.lineWidth = nearBest ? 3 : 2;
+      ctx.setLineDash(nearBest ? [] : [9, 7]);
+      ctx.beginPath();
+      ctx.rect(xToPx(left), yToPx(top), xToPx(right) - xToPx(left), yToPx(bottom) - yToPx(top));
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(209, 95, 63, 0.78)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(xToPx(0), yToPx(1));
+      ctx.lineTo(xToPx(p.x), yToPx(1));
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(71, 115, 93, 0.78)";
+      ctx.beginPath();
+      ctx.moveTo(xToPx(p.x), yToPx(1));
+      ctx.lineTo(xToPx(p.x), yToPx(p.y));
+      ctx.stroke();
+      ctx.restore();
+
+      drawLabel("|Δx|", p.x / 2, 0.78, "#d15f3f");
+      drawLabel("|Δy|", p.x + 0.24, (p.y + 1) / 2, "#47735d", "left");
+    }
+
+    function drawScene() {
+      const current = measure(m);
+      drawGrid();
+
+      drawLine(world.minX, 0.75 * world.minX + 3, world.maxX, 0.75 * world.maxX + 3, {
+        strokeStyle: "#24737f",
+        lineWidth: 4
+      });
+      drawLabel("y = 3x/4 + 3", 1.55, 4.35, "#24737f");
+
+      drawLine(bestM, world.minY, bestM, world.maxY, {
+        strokeStyle: "rgba(185, 133, 33, 0.34)",
+        lineWidth: 2
+      });
+      drawPoint(bestM, bestY, "#b98521", "最优 P*", 8);
+      drawLabel("m = -8/7", bestM - 0.1, 5.65, "#b98521", "right");
+
+      drawChebyshevSquare(current.p, current.dist, current.nearBest);
+      drawPoint(0, 1, "#2f3d46", "D(0,1)", 8);
+      drawPoint(current.p.x, current.p.y, "#d15f3f", `P(${fractionHint(m, "m")}, ${fmt(current.p.y)})`, current.nearBest ? 10 : 8);
+
+      if (current.nearBest) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(185, 133, 33, 0.76)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(xToPx(bestM), yToPx(bestY), 28 + Math.sin(Date.now() / 160) * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = "#684910";
+        ctx.font = "800 18px PingFang SC, Microsoft YaHei, Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("极值点：|Δx| = |Δy| = 8/7", xToPx(-2.65), yToPx(1.72));
+        ctx.restore();
+      }
+    }
+
+    function updatePanel() {
+      const current = measure(m);
+      const dominant = Math.abs(current.dx - current.dy) < 0.012 ? "equal" : current.dx > current.dy ? "dx" : "dy";
+      mReadout.textContent = fractionHint(m, "m");
+      dxValue.textContent = fractionHint(current.dx);
+      dyValue.textContent = fractionHint(current.dy);
+      distValue.textContent = fractionHint(current.dist);
+
+      dxCard.classList.toggle("active", dominant === "dx" || dominant === "equal");
+      dyCard.classList.toggle("active", dominant === "dy" || dominant === "equal");
+      distanceCard.classList.toggle("best", current.nearBest);
+
+      if (dominant === "equal") {
+        stateBadge.textContent = "横向差与纵向差相等";
+        distNote.textContent = "状态切换点也是最小值点：两项同时为 8/7。";
+      } else if (dominant === "dx") {
+        stateBadge.textContent = "横向差决定识别距离";
+        distNote.textContent = "|Δx| 更大，因此识别距离由横向距离给出。";
+      } else {
+        stateBadge.textContent = "纵向差决定识别距离";
+        distNote.textContent = "|Δy| 更大，因此识别距离由纵向距离给出。";
+      }
+
+      steps.forEach((step) => step.classList.remove("hot"));
+      if (current.nearBest) {
+        document.getElementById("step4").classList.add("hot");
+      } else if (dominant === "equal") {
+        document.getElementById("step3").classList.add("hot");
+      } else if (m < -2.67) {
+        document.getElementById("step2").classList.add("hot");
+      } else {
+        document.getElementById("step3").classList.add("hot");
+      }
+    }
+
+    function setM(value) {
+      m = Math.min(maxM, Math.max(minM, value));
+      slider.value = String(m);
+      updatePanel();
+      drawScene();
+    }
+
+    function animate(time) {
+      if (!lastTime) lastTime = time;
+      const dt = Math.min(0.045, (time - lastTime) / 1000);
+      lastTime = time;
+      if (playing) {
+        setM(m + direction * dt * 0.82);
+        if (m >= maxM || m <= minM) {
+          direction *= -1;
+          setM(m);
+        }
+      } else {
+        drawScene();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    slider.addEventListener("input", (event) => {
+      playing = false;
+      playBtn.textContent = "播放";
+      setM(Number(event.target.value));
+    });
+
+    playBtn.addEventListener("click", () => {
+      playing = !playing;
+      playBtn.textContent = playing ? "暂停" : "播放";
+    });
+
+    reverseBtn.addEventListener("click", () => {
+      direction *= -1;
+    });
+
+    bestBtn.addEventListener("click", () => {
+      playing = false;
+      playBtn.textContent = "播放";
+      setM(bestM);
+    });
+
+    setM(m);
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
