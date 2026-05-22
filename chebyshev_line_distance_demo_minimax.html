@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>识别距离与极值问题</title>
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --card: #ffffff;
+    --text: #2c2c2c;
+    --text-muted: #6b7280;
+    --accent: #e05c3a;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --orange: #f97316;
+    --axis: #9ca3af;
+    --grid: #e5e3dc;
+    --highlight: #fbbf24;
+    --border: #e0ddd5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  header h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+  header p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+  .layout {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 960px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .canvas-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    flex: 0 0 auto;
+  }
+  canvas {
+    display: block;
+    border-radius: 8px;
+  }
+  .right-panel {
+    flex: 1;
+    min-width: 280px;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .info-card h3 {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  .stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
+  }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.orange { color: var(--orange); }
+  .stat-value.highlight-active {
+    color: var(--highlight);
+    text-shadow: 0 0 8px rgba(251,191,36,0.6);
+  }
+  .phase-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: #f0ede8;
+    color: var(--text-muted);
+    transition: all 0.4s;
+    margin-bottom: 0.5rem;
+  }
+  .phase-badge.state-optimal {
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .phase-badge.state-crossing {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  .distance-bar-wrap {
+    margin-top: 0.5rem;
+  }
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+  .bar-track {
+    height: 10px;
+    background: var(--grid);
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 5px;
+    transition: width 0.08s linear, background 0.3s;
+    width: 0%;
+  }
+  .bar-fill.optimal {
+    background: var(--highlight);
+  }
+  .bar-optimal-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    opacity: 0.7;
+    left: 22.86%;
+  }
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .slider-wrap label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--grid);
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--blue);
+    cursor: pointer;
+    transition: transform 0.15s, background 0.3s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+  input[type="range"].at-optimal::-webkit-slider-thumb {
+    background: var(--highlight);
+    box-shadow: 0 0 0 3px rgba(251,191,36,0.3);
+  }
+  .btn-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .btn {
+    flex: 1;
+    padding: 0.55rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .btn:hover {
+    background: #f0ede8;
+    border-color: #ccc9c0;
+  }
+  .btn.primary {
+    background: var(--text);
+    color: #fff;
+    border-color: var(--text);
+  }
+  .btn.primary:hover {
+    background: #444;
+  }
+  .btn.active {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .proof-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .proof-card h3 {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+  }
+  .proof-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .proof-step {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    opacity: 0.35;
+    transition: opacity 0.4s;
+  }
+  .proof-step.active {
+    opacity: 1;
+  }
+  .proof-step.done {
+    opacity: 0.7;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--grid);
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+  }
+  .proof-step.active .step-num {
+    background: var(--blue);
+    color: #fff;
+  }
+  .proof-step.done .step-num {
+    background: var(--green);
+    color: #fff;
+  }
+  .step-text {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text);
+  }
+  .step-formula {
+    font-size: 0.88rem;
+    background: #f8f7f4;
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    margin-top: 0.3rem;
+    font-family: "Fira Code", "Consolas", monospace;
+    color: var(--text);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .optimal-callout {
+    background: #fffbeb;
+    border: 1.5px solid #f59e0b;
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: all 0.5s;
+    pointer-events: none;
+  }
+  .optimal-callout.show {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+  .optimal-callout .label {
+    font-size: 0.72rem;
+    color: #92400e;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.25rem;
+  }
+  .optimal-callout .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #b45309;
+    font-variant-numeric: tabular-nums;
+  }
+  .optimal-callout .sub {
+    font-size: 0.75rem;
+    color: #92400e;
+    margin-top: 0.2rem;
+  }
+  @keyframes pulse-ring {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(2.5); opacity: 0; }
+  }
+  @keyframes float-in {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>识别距离与极值问题</h1>
+  <p>点 D(0,1) 到动直线 P(m, 3m/4+3) 的最小识别距离</p>
+</header>
+
+<div class="layout">
+  <!-- Left: Canvas -->
+  <div class="canvas-card">
+    <canvas id="canvas" width="500" height="500"></canvas>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>点 D(0,1)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>动点 P(m, 3m/4+3)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e05c3a"></div>直线 y=¾x+3</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fbbf24;border-radius:2px;width:14px;height:3px"></div>识别距离=max(|Δx|,|Δy|)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>极值点</div>
+    </div>
+  </div>
+
+  <!-- Right: Controls + Info -->
+  <div class="right-panel">
+    <div class="info-card">
+      <h3>解题状态</h3>
+      <div class="phase-badge" id="phaseBadge">准备就绪</div>
+      <div class="stat-row">
+        <span class="stat-label">参数 m</span>
+        <span class="stat-value blue" id="mDisplay">0.000</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">P 坐标</span>
+        <span class="stat-value blue" id="pDisplay">(0.000 , 3.000)</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">|Δx| = |m|</span>
+        <span class="stat-value" id="dxDisplay">0.000</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">|Δy| = |¾m+2|</span>
+        <span class="stat-value" id="dyDisplay">2.000</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">识别距离 d(m)</span>
+        <span class="stat-value accent" id="distDisplay">2.000</span>
+      </div>
+      <div class="optimal-callout" id="optimalCallout">
+        <div class="label">✓ 极小值点</div>
+        <div class="value" id="optimalValue">8/7 ≈ 1.143</div>
+        <div class="sub" id="optimalPoint">P(−8/7 , 15/7)</div>
+      </div>
+      <div class="distance-bar-wrap">
+        <div class="bar-label">
+          <span>识别距离 d(m)</span>
+          <span id="barMaxLabel">5 (m=−5)</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" id="barFill"></div>
+          <div class="bar-optimal-marker" id="optimalMarker"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card controls">
+      <h3>手动控制</h3>
+      <div class="slider-wrap">
+        <label>m</label>
+        <input type="range" id="mSlider" min="-5" max="3" step="0.001" value="-4.2">
+        <span id="sliderVal" style="font-size:0.78rem;color:var(--text-muted);min-width:3rem;text-align:right">0.00</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="playBtn">▶ 播放</button>
+        <button class="btn" id="resetBtn">重置</button>
+        <button class="btn" id="optimalBtn">跳转极值</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn" id="prevStepBtn">◀ 上一步</button>
+        <button class="btn" id="nextStepBtn">下一步 ▶</button>
+      </div>
+    </div>
+
+    <div class="proof-card">
+      <h3>证明步骤</h3>
+      <div class="proof-steps">
+        <div class="proof-step" id="step1">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-text">定义识别距离</div>
+            <div class="step-formula">d(P,D) = max(|x_P-x_D|, |y_P-y_D|)</div>
+          </div>
+        </div>
+        <div class="proof-step" id="step2">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-text">代入 D(0,1)，P(m, 3m/4+3)</div>
+            <div class="step-formula">d(m) = max(|m|, |¾m+2|)</div>
+          </div>
+        </div>
+        <div class="proof-step" id="step3">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-text">极小值发生在两分支相等时</div>
+            <div class="step-formula">|m| = |¾m+2|</div>
+          </div>
+        </div>
+        <div class="proof-step" id="step4">
+          <div class="step-num">4</div>
+          <div>
+            <div class="step-text">m ≥ 0 时：m = ¾m+2 → ¼m = 2 → m = 8，d = 8（过大）</div>
+            <div class="step-formula">舍去，m ≥ 0 无可行解</div>
+          </div>
+        </div>
+        <div class="proof-step" id="step5">
+          <div class="step-num">5</div>
+          <div>
+            <div class="step-text">m < 0 且 m ≥ −8/3 时：−m = ¾m+2</div>
+            <div class="step-formula">−¼m = 2 → <b>m = −8/7</b>（可行！）</div>
+          </div>
+        </div>
+        <div class="proof-step" id="step6">
+          <div class="step-num">6</div>
+          <div>
+<div class="step-text">验证：d(−8/7) = max(8/7, 8/7) = 8/7</div>
+            <div class="step-formula"><b>min d = 8/7 ≈ 1.143</b>，P(−8/7 , 15/7)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Math ────────────────────────────────────────────────────────────────────
+// D = (0, 1), P = (m, 3m/4+3) on line y = 3x/4 + 3
+// Recognition distance: d(m) = max(|Δx|, |Δy|)
+//   = max(|m - 0|, |(3m/4+3) - 1|)
+// d(m) = max(|m|, |0.75m + 2|) — slider range [-5, 3] gives max d = 5 at m=-5
+const M_OPT = -8 / 7;               // ≈ -1.142857 — minimum point
+const Y_OPT = (3 * M_OPT) / 4 + 3;  // = 15/7 ≈ 2.143
+const OPT_DIST = Math.abs(M_OPT);    // = 8/7 ≈ 1.143
+const M_MAX = 10;
+const SCALE = 22; // px per unit
+const OX = 250, OY = 250; // canvas origin
+// For slider range [-5,3]: max d = max(|-5|, |0.75*(-5)+2|) = max(5, |-1.75|) = 5
+const MAX_DIST = 5;
+
+function toCX(x) { return OX + x * SCALE; }
+function toCY(y) { return OY - y * SCALE; }
+
+// d(m) = max(|m|, |0.75m + 2|)
+function dist(m) {
+  return Math.max(Math.abs(m), Math.abs(0.75 * m + 2));
+}
+// |Δy| = |0.75m + 2|
+function dyAbs(m) {
+  return Math.abs(0.75 * m + 2);
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let m = -4.2; // matches slider initial value
+let animId = null;
+let playing = true; // auto-start like reference
+let autoDir = 1;  // 1: forward, -1: backward
+let currentStep = 0;
+let atOptimal = false;
+
+// Slider bounds for animation (match slider range [-5, 3])
+const SLIDER_MIN = -5;
+const SLIDER_MAX = 3;
+
+// ─── Canvas ──────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Grid & axis
+function drawGrid() {
+  const xMin = -10, xMax = 10, yMin = -3, yMax = 10;
+  ctx.clearRect(0, 0, 500, 500);
+
+  // Background
+  ctx.fillStyle = '#fefefe';
+  ctx.fillRect(0, 0, 500, 500);
+
+  // Grid lines
+  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = '#e8e5dc';
+  ctx.setLineDash([]);
+  for (let x = xMin; x <= xMax; x++) {
+    ctx.strokeStyle = x === 0 ? '#c8c4ba' : '#e8e5dc';
+    ctx.lineWidth = x === 0 ? 1.5 : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(toCX(x), toCY(yMin));
+    ctx.lineTo(toCX(x), toCY(yMax));
+    ctx.stroke();
+  }
+  for (let y = yMin; y <= yMax; y++) {
+    ctx.strokeStyle = y === 0 ? '#c8c4ba' : '#e8e5dc';
+    ctx.lineWidth = y === 0 ? 1.5 : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(toCX(xMin), toCY(y));
+    ctx.lineTo(toCX(xMax), toCY(y));
+    ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  for (let x = xMin; x <= xMax; x++) {
+    if (x !== 0 && x % 5 === 0) {
+      ctx.fillText(x, toCX(x), toCY(0) + 14);
+    }
+  }
+  ctx.textAlign = 'right';
+  for (let y = yMin; y <= yMax; y++) {
+    if (y !== 0 && y % 5 === 0) {
+      ctx.fillText(y, toCX(0) - 6, toCY(y) + 4);
+    }
+  }
+
+  // Axis names
+  ctx.fillStyle = '#6b7280';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('x', toCX(xMax) - 4, toCY(0) - 6);
+  ctx.textAlign = 'left';
+  ctx.fillText('y', toCX(0) + 8, toCY(yMax) + 14);
+
+  // Arrow for x axis
+  ctx.strokeStyle = '#9ca3af';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(toCX(xMin), toCY(0));
+  ctx.lineTo(toCX(xMax), toCY(0));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(toCX(xMax), toCY(0));
+  ctx.lineTo(toCX(xMax) - 6, toCY(0) - 3);
+  ctx.lineTo(toCX(xMax) - 6, toCY(0) + 3);
+  ctx.closePath();
+  ctx.fillStyle = '#9ca3af';
+  ctx.fill();
+
+  // Arrow for y axis
+  ctx.beginPath();
+  ctx.moveTo(toCX(0), toCY(yMin));
+  ctx.lineTo(toCX(0), toCY(yMax));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(toCX(0), toCY(yMax));
+  ctx.lineTo(toCX(0) - 3, toCY(yMax) + 6);
+  ctx.lineTo(toCX(0) + 3, toCY(yMax) + 6);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// Draw line y = 3x/4 + 3
+function drawLine() {
+  const xMin = -10, xMax = 10;
+  ctx.strokeStyle = '#e05c3a';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(toCX(xMin), toCY(0.75 * xMin + 3));
+  ctx.lineTo(toCX(xMax), toCY(0.75 * xMax + 3));
+  ctx.stroke();
+}
+
+// Draw point D
+function drawD() {
+  const cx = toCX(0), cy = toCY(1);
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(59,130,246,0.15)';
+  ctx.fill();
+  // Inner dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.fillStyle = '#3b82f6';
+  ctx.fill();
+  // Label
+  ctx.fillStyle = '#1d4ed8';
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('D', cx + 10, cy - 6);
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillText('(0, 1)', cx + 10, cy + 8);
+}
+
+// Draw point P(m, 3m/4+3) and distance visualization
+function drawP(animFrac) {
+  const px = m;
+  const py = 0.75 * m + 3;
+  const cx = toCX(px), cy = toCY(py);
+  const dcx = toCX(0), dcy = toCY(1);
+  const dmx = dist(m);
+  const isOpt = atOptimal;
+
+  // Recognition distance rectangle (max of dx, dy)
+  const dxAbs = Math.abs(m);
+  const dyAbs = Math.abs(0.75 * m + 2); // |(3m/4+3) - 1| = |3m/4 + 2|
+  const larger = dist(m);
+
+  ctx.setLineDash([4, 4]);
+  ctx.strokeStyle = isOpt ? '#fbbf24' : 'rgba(34,197,94,0.45)';
+  ctx.lineWidth = isOpt ? 2 : 1.5;
+
+  if (larger === dxAbs || dxAbs === dyAbs) {
+    // Draw horizontal line (dx dominates or equal)
+    ctx.strokeStyle = isOpt ? '#fbbf24' : 'rgba(34,197,94,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(dcx, cy);
+    ctx.lineTo(cx, cy);
+    ctx.stroke();
+  }
+  if (larger === dyAbs) {
+    // Draw vertical line (dy dominates)
+    ctx.strokeStyle = isOpt ? '#fbbf24' : 'rgba(249,115,22,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(cx, dcy);
+    ctx.lineTo(cx, cy);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Distance markers on axes
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '10px system-ui, sans-serif';
+  if (Math.abs(dxAbs - dmx) < 0.05 && Math.abs(m) > 0.1) {
+    ctx.textAlign = 'center';
+    ctx.fillText('|Δx|=' + dxAbs.toFixed(2), (dcx + cx) / 2, cy + 12);
+  }
+  if (Math.abs(dyAbs - dmx) < 0.05 && dyAbs > 0.1) {
+    ctx.textAlign = 'right';
+    ctx.fillText('|Δy|=' + dyAbs.toFixed(2), cx - 4, (dcy + cy) / 2);
+  }
+
+  // Connecting line D-P (subtle)
+  ctx.strokeStyle = 'rgba(100,100,100,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath();
+  ctx.moveTo(dcx, dcy);
+  ctx.lineTo(cx, cy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Point P
+  const pColor = isOpt ? '#f97316' : '#22c55e';
+  ctx.beginPath();
+  ctx.arc(cx, cy, isOpt ? 9 : 7, 0, Math.PI * 2);
+  ctx.fillStyle = pColor;
+  ctx.fill();
+
+  if (isOpt) {
+    // Pulse rings for optimal
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(251,191,36,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Label P
+  ctx.fillStyle = isOpt ? '#c2410c' : '#15803d';
+  ctx.font = 'bold 12px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  const labelOffsetX = px < 8 ? 12 : -40;
+  const labelOffsetY = py > 5 ? -14 : 16;
+  ctx.fillText('P', cx + labelOffsetX, cy + labelOffsetY);
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.fillStyle = isOpt ? '#c2410c' : '#16a34a';
+  ctx.fillText('m=' + m.toFixed(2), cx + labelOffsetX, cy + labelOffsetY + 12);
+}
+
+// Optimal marker on canvas
+function drawOptimalMarker() {
+  const cx = toCX(M_OPT), cy = toCY(Y_OPT);
+  // Small golden triangle
+  ctx.fillStyle = '#f59e0b';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 14);
+  ctx.lineTo(cx - 5, cy - 6);
+  ctx.lineTo(cx + 5, cy - 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#92400e';
+  ctx.font = 'bold 9px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('MIN', cx, cy - 17);
+}
+
+// ─── UI Update ────────────────────────────────────────────────────────────────
+const elM      = document.getElementById('mDisplay');
+const elP      = document.getElementById('pDisplay');
+const elDx     = document.getElementById('dxDisplay');
+const elDy     = document.getElementById('dyDisplay');
+const elDist   = document.getElementById('distDisplay');
+const elBadge  = document.getElementById('phaseBadge');
+const elBar    = document.getElementById('barFill');
+const elSlider = document.getElementById('mSlider');
+const elSliderVal = document.getElementById('sliderVal');
+const elCallout = document.getElementById('optimalCallout');
+const stepsEls = [
+  document.getElementById('step1'),
+  document.getElementById('step2'),
+  document.getElementById('step3'),
+  document.getElementById('step4'),
+  document.getElementById('step5'),
+  document.getElementById('step6'),
+];
+
+function isOptimal(mVal) {
+  return Math.abs(mVal - M_OPT) < 0.035; // match reference threshold
+}
+
+function updateUI() {
+  const dx = Math.abs(m);
+  const dy2 = Math.abs(0.75 * m + 2); // |(3m/4+3) - 1|
+  const d = dist(m);
+  atOptimal = isOptimal(m);
+
+  elM.textContent = m.toFixed(3);
+  elP.textContent = `(${m.toFixed(3)} , ${(0.75*m+3).toFixed(3)})`;
+  elDx.textContent = dx.toFixed(3);
+  elDy.textContent = dy2.toFixed(3);
+  elDist.textContent = d.toFixed(3);
+  elSliderVal.textContent = m.toFixed(2);
+
+  // Slider sync
+  elSlider.value = m;
+  elSlider.classList.toggle('at-optimal', atOptimal);
+
+  // Bar
+  const pct = Math.min(100, (d / MAX_DIST) * 100);
+  elBar.style.width = pct + '%';
+  elBar.classList.toggle('optimal', atOptimal);
+
+  // Color coding for stat values
+  elDx.className = 'stat-value' + (Math.abs(dx - d) < 0.05 ? (atOptimal ? ' highlight-active' : ' orange') : '');
+  elDy.className = 'stat-value' + (Math.abs(dy2 - d) < 0.05 ? (atOptimal ? ' highlight-active' : ' orange') : '');
+
+  // Phase badge
+  if (atOptimal) {
+    elBadge.textContent = '✦ 极小值点';
+    elBadge.className = 'phase-badge state-optimal';
+  } else if (Math.abs(dx - dy2) < 0.3) {
+    elBadge.textContent = '⟳ 临界过渡';
+    elBadge.className = 'phase-badge state-crossing';
+  } else if (dx > dy2) {
+    elBadge.textContent = '→ Δx 主导';
+    elBadge.className = 'phase-badge';
+  } else {
+    elBadge.textContent = '↑ Δy 主导';
+    elBadge.className = 'phase-badge';
+  }
+
+  // Callout
+  elCallout.classList.toggle('show', atOptimal);
+
+  // Proof steps highlight
+  const stepThresholds = [-10, -10, -10, 0.5, M_OPT - 0.3, M_OPT + 0.05];
+  const stepActive = Math.max(0, currentStep);
+  stepsEls.forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i < stepActive) s.classList.add('done');
+    else if (i === stepActive) s.classList.add('active');
+  });
+}
+
+function render() {
+  drawGrid();
+  drawLine();
+  drawOptimalMarker();
+  drawD();
+  drawP();
+  updateUI();
+}
+
+// ─── Animation ────────────────────────────────────────────────────────────────
+// Speed: m units per second
+let speed = 0.82; // m per second (match reference)
+let lastTime = null;
+
+function animate(time) {
+  if (!playing) {
+    lastTime = null;
+    return;
+  }
+  if (!lastTime) lastTime = time;
+  const dt = Math.min(0.045, (time - lastTime) / 1000); // clamp dt
+  lastTime = time;
+  m += autoDir * speed * dt;
+  if (m >= SLIDER_MAX) { m = SLIDER_MAX; autoDir = -1; }
+  if (m <= SLIDER_MIN) { m = SLIDER_MIN; autoDir = 1; }
+  render();
+  animId = requestAnimationFrame(animate);
+}
+
+function play() {
+  playing = true;
+  document.getElementById('playBtn').textContent = '⏸ 暂停';
+  document.getElementById('playBtn').classList.add('active');
+  lastTime = null;
+  animId = requestAnimationFrame(animate);
+}
+
+function pause() {
+  playing = false;
+  cancelAnimationFrame(animId);
+  document.getElementById('playBtn').textContent = '▶ 播放';
+  document.getElementById('playBtn').classList.remove('active');
+}
+
+function reset() {
+  pause();
+  m = SLIDER_MIN;
+  currentStep = 0;
+  render();
+}
+
+function goToOptimal() {
+  pause();
+  m = M_OPT;
+  currentStep = 5;
+  render();
+}
+
+// Step-by-step navigation — representative m values within slider range
+const STEP_M = [-5, -2, -2, -2, M_OPT, M_OPT]; // 6 steps, each at a characteristic m
+
+function prevStep() {
+  if (currentStep > 0) currentStep--;
+  m = STEP_M[currentStep];
+  render();
+}
+function nextStep() {
+  if (currentStep < stepsEls.length - 1) currentStep++;
+  m = STEP_M[currentStep];
+  render();
+}
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+document.getElementById('playBtn').addEventListener('click', () => {
+  playing ? pause() : play();
+});
+document.getElementById('resetBtn').addEventListener('click', reset);
+document.getElementById('optimalBtn').addEventListener('click', goToOptimal);
+document.getElementById('prevStepBtn').addEventListener('click', prevStep);
+document.getElementById('nextStepBtn').addEventListener('click', nextStep);
+elSlider.addEventListener('input', (e) => {
+  pause();
+  m = parseFloat(e.target.value);
+  render();
+});
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+// Auto-start animation on load (matching reference behavior)
+(function init() {
+  reset();
+  playing = true;
+  document.getElementById('playBtn').textContent = '⏸ 暂停';
+  document.getElementById('playBtn').classList.add('active');
+  lastTime = null;
+  animId = requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
