@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>几何证明 — 四边形 ABCD（纯初等几何）</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 { font-size:1.6rem; margin-bottom:6px; color:#ffd166; }
+  canvas {
+    border-radius: 16px;
+    background: #fefefe;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    max-width: 100%;
+    height: auto;
+  }
+  .steps {
+    margin-top: 18px;
+    background: #16213e;
+    border-radius: 12px;
+    padding: 16px 22px;
+    max-width: 760px;
+    font-size: 0.9rem;
+    line-height: 1.75;
+    columns: 2;
+    column-gap: 28px;
+  }
+  .steps .tag {
+    display: inline-block;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 22px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin-right: 4px;
+    color: #fff;
+    vertical-align: middle;
+  }
+  .tag.t1 { background:#e63946; } .tag.t2 { background:#e76f51; }
+  .tag.t3 { background:#2a9d8f; } .tag.t4 { background:#9b5de5; }
+  .tag.t5 { background:#457b9d; } .tag.t6 { background:#f4a261; }
+  .tag.t7 { background:#06d6a0; color:#111; }
+</style>
+</head>
+<body>
+
+<div style="max-width:760px;background:#0f3460;border-radius:12px;padding:16px 22px;margin-bottom:16px;text-align:center;line-height:1.8;">
+  <div style="font-size:1.2rem;color:#ffd166;font-weight:bold;margin-bottom:6px;">📐 题目</div>
+  <div style="font-size:1rem;color:#eee;">
+    四边形 ABCD 内，<b>DB = DC</b>，<b>∠DCA = 60°</b>，<b>∠DAC = 78°</b>，<b>∠CAB = 24°</b>。<br>求 <b>∠ACB</b> 的大小。
+  </div>
+</div>
+
+<h1>四边形 ABCD — 初等几何证明</h1>
+
+<canvas id="c" width="780" height="540"></canvas>
+
+<div class="steps" id="steps">
+  <div><span class="tag t1">①</span> 延长 CA 至 E 使 CE=CD，则 △CDE 等边</div>
+  <div><span class="tag t2">②</span> ∠ADC=42°，∠ADE=60°−42°=<b>18°</b></div>
+  <div><span class="tag t3">③</span> ∠DAE=180°−78°=<b>102°</b>，∠DAB=78°+24°=<b>102°</b></div>
+  <div><span class="tag t4">④</span> DB=DC=DE，又 ∠DAB=∠DAE=102°＞90°</div>
+  <div><span class="tag t5">⑤</span> ∴ △DAB ≅ △DAE（SSA钝角）</div>
+  <div><span class="tag t6">⑥</span> ∠ADB=∠ADE=<b>18°</b>，∠ABD=∠AED=<b>60°</b></div>
+  <div><span class="tag t7">⑦</span> ∠BDC=24°，等腰△DBC ⇒ ∠DCB=<b>78°</b></div>
+  <div style="grid-column:1/-1;text-align:center;margin-top:6px;font-size:1.1rem;">
+    ∴ ∠ACB = ∠DCB − ∠DCA = 78° − 60° = <b style="color:#06d6a0;font-size:1.3rem;">18°</b>
+  </div>
+</div>
+
+<script>
+const W = 780, H = 540;
+const sin = Math.sin, cos = Math.cos, sqrt = Math.sqrt, atan2 = Math.atan2;
+const D2R = Math.PI / 180;
+
+const sin60 = sin(60*D2R), sin78 = sin(78*D2R), sin42 = sin(42*D2R);
+const cos24 = cos(24*D2R), sin24 = sin(24*D2R);
+const cos102 = cos(102*D2R), sin102 = sin(102*D2R);
+
+const k = 1 / sin42;
+const AD = k * sin60;
+const CD = k * sin78;
+
+const A = [0, 0];
+const C = [cos24, sin24];
+const D = [AD * cos102, AD * sin102];
+
+// B on +x axis, DB = CD  → (t - Dx)² + Dy² = CD² → t = Dx + √(CD² - Dy²)
+const tB = D[0] + sqrt(CD*CD - D[1]*D[1]);
+const B = [tB, 0];
+
+// E on ray CA beyond A, CE = CD
+// CA direction from C to A: A - C
+const CAdir = [A[0] - C[0], A[1] - C[1]]; // unit vector (|CA|=1)
+const s = CD - 1;  // AE = CD - CA = CD - 1
+const E = [A[0] + s * CAdir[0], A[1] + s * CAdir[1]];
+
+// ── viewport ──
+const PAD = 50;
+const pts = [A, B, C, D, E];
+let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+pts.forEach(p => {
+  if (p[0] < xMin) xMin = p[0]; if (p[0] > xMax) xMax = p[0];
+  if (p[1] < yMin) yMin = p[1]; if (p[1] > yMax) yMax = p[1];
+});
+const rX = xMax - xMin || 1, rY = yMax - yMin || 1;
+const sc = Math.min((W - 2*PAD) / rX, (H - 2*PAD) / rY);
+const cx = (W - rX*sc) / 2;
+const cy = (H - rY*sc) / 2;
+
+function tx(x) { return cx + (x - xMin) * sc; }
+function ty(y) { return cy + (yMax - y) * sc; }
+
+// ── canvas ──
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+ctx.save();
+ctx.beginPath();
+const R = 16;
+ctx.moveTo(R,0); ctx.lineTo(W-R,0); ctx.arcTo(W,0,W,R,R);
+ctx.lineTo(W,H-R); ctx.arcTo(W,H,W-R,H,R);
+ctx.lineTo(R,H);   ctx.arcTo(0,H,0,H-R,R);
+ctx.lineTo(0,R);   ctx.arcTo(0,0,R,0,R);
+ctx.closePath(); ctx.clip();
+
+ctx.fillStyle = '#fefefe';
+ctx.fillRect(0, 0, W, H);
+
+// ── helpers ──
+function drawAngleArc(tip, armA, armB, radius, color, label) {
+  const v1mx = armA[0] - tip[0], v1my = armA[1] - tip[1];
+  const v2mx = armB[0] - tip[0], v2my = armB[1] - tip[1];
+  const crossM = v1mx * v2my - v1my * v2mx;
+  const dotM = v1mx * v2mx + v1my * v2my;
+  const angM = atan2(crossM, dotM);
+
+  const mx = tx(tip[0]), my = ty(tip[1]);
+  const a1 = atan2(ty(armA[1]) - my, tx(armA[0]) - mx);
+  const absAng = Math.abs(angM);
+  const canvasCCW = angM > 0;
+  const endAngle = a1 + (canvasCCW ? -absAng : absAng);
+
+  ctx.beginPath();
+  ctx.fillStyle = color + '22';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.8;
+  ctx.moveTo(mx, my);
+  ctx.arc(mx, my, radius, a1, endAngle, canvasCCW);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  const mid = a1 + (canvasCCW ? -absAng/2 : absAng/2);
+  const lx = mx + (radius + 15) * cos(mid);
+  const ly = my + (radius + 15) * sin(mid);
+  ctx.fillStyle = color;
+  ctx.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, lx, ly);
+}
+
+function drawSeg(p, q, color, w, dash) {
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = w || 2;
+  ctx.setLineDash(dash || []);
+  ctx.moveTo(tx(p[0]), ty(p[1]));
+  ctx.lineTo(tx(q[0]), ty(q[1]));
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawPt(p, color, r, label, off) {
+  const x = tx(p[0]), y = ty(p[1]);
+  ctx.beginPath();
+  ctx.fillStyle = color;
+  ctx.arc(x, y, r, 0, 2*Math.PI);
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#222';
+  ctx.font = 'bold 18px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + (off[0]||14), y + (off[1]||-14));
+}
+
+function drawTick(p, q, n, color) {
+  const mx = (tx(p[0]) + tx(q[0])) / 2;
+  const my = (ty(p[1]) + ty(q[1])) / 2;
+  const dx = tx(q[0]) - tx(p[0]);
+  const dy = ty(q[1]) - ty(p[1]);
+  const len = sqrt(dx*dx + dy*dy);
+  if (len < 1) return;
+  const nx = -dy/len, ny = dx/len;
+  const gap = 7;
+  for (let i = 0; i < n; i++) {
+    const off = (i - (n-1)/2) * gap;
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.moveTo(mx + nx*off,       my + ny*off);
+    ctx.lineTo(mx + nx*off + nx*10, my + ny*off + ny*10);
+    ctx.stroke();
+  }
+}
+
+// ── draw: equilateral △CDE (filled, lighter) ──
+ctx.beginPath();
+ctx.fillStyle = 'rgba(6, 214, 160, 0.10)';
+ctx.strokeStyle = '#06d6a0';
+ctx.lineWidth = 2;
+ctx.setLineDash([5, 3]);
+ctx.moveTo(tx(C[0]), ty(C[1]));
+ctx.lineTo(tx(D[0]), ty(D[1]));
+ctx.lineTo(tx(E[0]), ty(E[1]));
+ctx.closePath();
+ctx.fill();
+ctx.stroke();
+ctx.setLineDash([]);
+
+// ── draw: quadrilateral ABCD ──
+ctx.beginPath();
+ctx.fillStyle = '#e8f4f8';
+ctx.strokeStyle = '#336699';
+ctx.lineWidth = 2.5;
+ctx.moveTo(tx(A[0]), ty(A[1]));
+ctx.lineTo(tx(B[0]), ty(B[1]));
+ctx.lineTo(tx(C[0]), ty(C[1]));
+ctx.lineTo(tx(D[0]), ty(D[1]));
+ctx.closePath();
+ctx.fill();
+ctx.stroke();
+
+// ── diagonals ──
+drawSeg(A, C, '#bbb', 1.2, [5, 4]);
+drawSeg(B, D, '#bbb', 1.2, [5, 4]);
+
+// ── auxiliary line: extended CA to E ──
+drawSeg(C, E, '#06d6a0', 2, [6, 4]);
+
+// ── DE segment (side of equilateral) ──
+drawSeg(D, E, '#06d6a0', 2.2);
+
+// ── points ──
+drawPt(A, '#e63946', 7, 'A', [-16, 18]);
+drawPt(B, '#457b9d', 7, 'B', [16, 16]);
+drawPt(C, '#2a9d8f', 7, 'C', [14, -16]);
+drawPt(D, '#f4a261', 7, 'D', [-14, -18]);
+drawPt(E, '#06d6a0', 7, 'E', [-16, 18]);
+
+// ── equal-length marks ──
+// DB = DC (given)
+drawTick(D, B, 2, '#e76f51');
+drawTick(D, C, 2, '#e76f51');
+// CE = CD = DE (equilateral)
+drawTick(C, E, 1, '#06d6a0');
+drawTick(C, D, 1, '#06d6a0');
+drawTick(D, E, 1, '#06d6a0');
+
+// ── DB = DE (derived, shown as double-dashed) ──
+// Use same tick style but in different color to show DB=DE
+drawTick(D, B, 2, '#e76f51'); // already done, redo to ensure visibility
+drawTick(D, E, 2, '#9b5de5'); // show DB = DE with purple ticks
+
+// ── angle arcs ──
+// Given (solid colors)
+drawAngleArc(C, D, A, 30, '#e63946', '60°');      // ① ∠DCA=60°
+drawAngleArc(A, D, C, 28, '#e76f51', '78°');      // ① ∠DAC=78°
+drawAngleArc(A, C, B, 32, '#2a9d8f', '24°');      // ① ∠CAB=24°
+
+// Equilateral △CDE — ∠CDE=60° at D
+drawAngleArc(D, C, E, 30, '#06d6a0', '60°');      // ① ∠CDE=60°
+
+// Key steps
+drawAngleArc(D, A, E, 32, '#06d6a0', '18°');      // ② ∠ADE=18°
+drawAngleArc(A, D, E, 34, '#f4a261', '102°');     // ③ ∠DAE=102°
+drawAngleArc(E, A, D, 30, '#06d6a0', '60°');      // ⑥ ∠AED=60°
+
+// Answer
+drawAngleArc(C, A, B, 38, '#9b5de5', '18°');      // ⑦ ∠ACB=18°
+
+// ── congruence mark: △DAB ≅ △DAE ──
+// Highlight corresponding parts with matching symbols
+// Put a small "≅" text between the two triangles
+const midAB = [(A[0]+B[0])/2, (A[1]+B[1])/2];
+const midAE = [(A[0]+E[0])/2, (A[1]+E[1])/2];
+ctx.fillStyle = '#9b5de5';
+ctx.font = 'italic bold 13px "PingFang SC","Microsoft YaHei",sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText('≅', tx((midAB[0]+midAE[0])/2), ty((midAB[1]+midAE[1])/2) - 8);
+
+// ── labels ──
+// DB = DC = DE
+ctx.fillStyle = '#e76f51';
+ctx.font = 'italic 12px "PingFang SC","Microsoft YaHei",sans-serif';
+ctx.textAlign = 'left';
+ctx.fillText('DB=DC=DE', tx(D[0]) + 12, ty(D[1]) - 42);
+
+// CE = CD label
+ctx.fillStyle = '#06d6a0';
+ctx.fillText('CE=CD', tx(C[0]) + 8, ty(C[1]) - 30);
+
+ctx.restore();
+</script>
+
+</body>
+</html>
