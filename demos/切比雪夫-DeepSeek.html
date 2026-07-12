@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>识别距离 — 点到直线的切比雪夫距离</title>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --line-color: #3b82f6;
+    --point-d: #ef4444;
+    --point-p: #f59e0b;
+    --square-fill: rgba(59,130,246,0.08);
+    --square-stroke: rgba(59,130,246,0.45);
+    --min-color: #10b981;
+    --dx-color: #ef4444;
+    --dy-color: #8b5cf6;
+    --grid: #e8e8e0;
+    --axis: #94a3b8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .container {
+    max-width: 820px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* Header card */
+  .header {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+  }
+  .header h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header h1 .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--min-color);
+    flex-shrink: 0;
+  }
+  .problem-text {
+    font-size: 0.92rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+  .problem-text .highlight {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .problem-text .formula {
+    display: inline-block;
+    background: #f1f5f9;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-family: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+    font-size: 0.88rem;
+  }
+  .result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    background: #ecfdf5;
+    color: #065f46;
+    font-size: 0.88rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid #a7f3d0;
+  }
+  .result-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--min-color);
+  }
+
+  /* Canvas card */
+  .canvas-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 12px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .canvas-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+    align-self: flex-start;
+    margin-left: 8px;
+    margin-bottom: 4px;
+  }
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Controls */
+  .controls-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .btn:active { transform: scale(0.97); }
+  .btn.active {
+    background: #eff6ff;
+    border-color: var(--line-color);
+    color: var(--line-color);
+  }
+  .btn.accent {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+  }
+  .btn.accent:hover { background: #d1fae5; }
+
+  .speed-group {
+    display: flex;
+    gap: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .speed-btn {
+    border: none;
+    background: var(--card);
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    border-right: 1px solid var(--border);
+  }
+  .speed-btn:last-child { border-right: none; }
+  .speed-btn:hover { background: #f1f5f9; }
+  .speed-btn.active { background: #eff6ff; color: var(--line-color); font-weight: 600; }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+  }
+  .slider-row label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 28px;
+  }
+  .slider-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: #e2e8f0;
+    outline: none;
+  }
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--line-color);
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .slider-row .val {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    min-width: 44px;
+    text-align: right;
+    font-family: "SF Mono", "JetBrains Mono", monospace;
+  }
+
+  /* Info panel */
+  .info-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 22px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px 20px;
+  }
+  .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .info-item .label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+  }
+  .info-item .value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    font-family: "SF Mono", "JetBrains Mono", "Menlo", monospace;
+  }
+  .info-item .value.min { color: var(--min-color); }
+  .info-item .value.dx { color: var(--dx-color); }
+  .info-item .value.dy { color: var(--dy-color); }
+
+  .info-highlight {
+    grid-column: 1 / -1;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #92400e;
+    text-align: center;
+    transition: opacity 0.3s;
+  }
+  .info-highlight.hidden { opacity: 0; }
+
+  @media (max-width: 640px) {
+    .header { padding: 16px 18px; }
+    .header h1 { font-size: 1.15rem; }
+    .controls-card { gap: 6px; padding: 12px 14px; }
+    .btn { padding: 6px 10px; font-size: 0.78rem; }
+    .info-card { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1><span class="dot"></span>识别距离：点到直线的切比雪夫距离</h1>
+    <div class="problem-text">
+      在平面直角坐标系中，定义两点间的 <span class="highlight">「识别距离」</span> 为横坐标之差与纵坐标之差中的最大值：
+      <span class="formula">d(P₁, P₂) = max(|x₁−x₂|, |y₁−y₂|)</span>（即 L∞ 度量 / 切比雪夫距离）。
+      给定点 <span class="highlight">D(0, 1)</span> 和直线 <span class="highlight">L: y = ¾x + 3</span>（参数形式 <span class="formula">(m, 3m/4+3)</span>），
+      求点 D 到直线上各点识别距离的最小值。
+    </div>
+    <div class="result-badge">最小值 d<sub>min</sub> = 8/7 ≈ 1.143，在 m = −8/7 ≈ −1.143 处取得，对应点 P(−8/7, 15/7)</div>
+  </div>
+
+  <!-- Main canvas -->
+  <div class="canvas-card">
+    <span class="canvas-label">坐标系可视化</span>
+    <canvas id="mainCanvas" width="780" height="460"></canvas>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-card">
+    <button class="btn" id="btnRewind" title="回到起点">⏮</button>
+    <button class="btn" id="btnPlay" title="播放/暂停">▶</button>
+    <button class="btn" id="btnReverse" title="自动往复">🔄 往复</button>
+    <button class="btn accent" id="btnMin" title="跳转到最小值点">📍 极值点</button>
+    <span style="color:#cbd5e1;margin:0 2px;">|</span>
+    <span style="font-size:0.82rem;color:var(--text-secondary);">速度</span>
+    <div class="speed-group" id="speedGroup">
+      <button class="speed-btn" data-speed="0.5">0.5×</button>
+      <button class="speed-btn active" data-speed="1">1×</button>
+      <button class="speed-btn" data-speed="2">2×</button>
+    </div>
+    <span style="color:#cbd5e1;margin:0 2px;">|</span>
+    <div class="slider-row">
+      <label>m =</label>
+      <input type="range" id="sliderM" min="0" max="200" value="0" step="1">
+      <span class="val" id="valM">0.00</span>
+    </div>
+  </div>
+
+  <!-- Distance graph -->
+  <div class="canvas-card">
+    <span class="canvas-label">识别距离随参数 m 变化的函数图像</span>
+    <canvas id="distCanvas" width="780" height="210"></canvas>
+  </div>
+
+  <!-- Info panel -->
+  <div class="info-card" id="infoPanel">
+    <div class="info-item">
+      <span class="label">参数 m</span>
+      <span class="value" id="infoM">—</span>
+    </div>
+    <div class="info-item">
+      <span class="label">直线上点 P</span>
+      <span class="value" id="infoP">—</span>
+    </div>
+    <div class="info-item">
+      <span class="label">|Δx| = |m − 0|</span>
+      <span class="value dx" id="infoDx">—</span>
+    </div>
+    <div class="info-item">
+      <span class="label">|Δy| = |y_P − 1|</span>
+      <span class="value dy" id="infoDy">—</span>
+    </div>
+    <div class="info-item">
+      <span class="label">识别距离 d</span>
+      <span class="value" id="infoD" style="font-size:1.15rem;">—</span>
+    </div>
+    <div class="info-highlight hidden" id="infoMinHint">
+      ⭐ 已到达极值点！d = 8/7 ≈ 1.143，此时 |Δx| = |Δy|，点 P 位于 L∞ 球的角点上
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // ─── Constants ──────────────────────────────
+  const D = { x: 0, y: 1 };
+  const LINE_SLOPE = 3/4;
+  const LINE_INTERCEPT = 3;
+  const MIN_M = -8/7;
+  const MIN_D = 8/7;
+  const MIN_P = { x: MIN_M, y: LINE_SLOPE * MIN_M + LINE_INTERCEPT }; // (-8/7, 15/7)
+
+  // ─── State ──────────────────────────────────
+  let m = -4;               // current parameter
+  let playing = true;
+  let autoReverse = true;
+  let direction = 1;
+  let speed = 1;            // units/sec
+  let lastTime = null;
+  const M_MIN_RANGE = -5;
+  const M_MAX_RANGE = 5;
+
+  // ─── DOM refs ──────────────────────────────
+  const mainCanvas = document.getElementById('mainCanvas');
+  const mainCtx = mainCanvas.getContext('2d');
+  const distCanvas = document.getElementById('distCanvas');
+  const distCtx = distCanvas.getContext('2d');
+  const sliderM = document.getElementById('sliderM');
+  const valM = document.getElementById('valM');
+  const btnPlay = document.getElementById('btnPlay');
+  const btnReverse = document.getElementById('btnReverse');
+  const infoMinHint = document.getElementById('infoMinHint');
+
+  // ─── Coordinate transform for main canvas ──
+  const MAIN_W = mainCanvas.width;   // 780
+  const MAIN_H = mainCanvas.height;  // 460
+  const ML = 65, MR = 35, MT = 35, MB = 45;
+  const PW = MAIN_W - ML - MR;  // 680
+  const PH = MAIN_H - MT - MB;  // 380
+  const XMIN = -5, XMAX = 5, YMIN = -2, YMAX = 8;
+
+  function toX(mx) { return ML + (mx - XMIN) / (XMAX - XMIN) * PW; }
+  function toY(my) { return MT + (YMAX - my) / (YMAX - YMIN) * PH; }
+  function toMX(px) { return XMIN + (px - ML) / PW * (XMAX - XMIN); }
+  function toMY(py) { return YMAX - (py - MT) / PH * (YMAX - YMIN); }
+
+  // ─── Coordinate transform for distance canvas ──
+  const DIST_W = distCanvas.width;   // 780
+  const DIST_H = distCanvas.height;  // 210
+  const DL = 65, DR = 35, DT = 22, DB = 35;
+  const DPW = DIST_W - DL - DR;
+  const DPH = DIST_H - DT - DB;
+  const DXMIN = -5, DXMAX = 5, DYMIN = 0, DYMAX = 6;
+
+  function dToX(mx) { return DL + (mx - DXMIN) / (DXMAX - DXMIN) * DPW; }
+  function dToY(dy) { return DT + (DYMAX - dy) / (DYMAX - DYMIN) * DPH; }
+
+  // ─── Draw main canvas ──────────────────────
+  function drawMain() {
+    const ctx = mainCtx;
+    ctx.clearRect(0, 0, MAIN_W, MAIN_H);
+
+    // Grid
+    ctx.strokeStyle = '#eaeae2';
+    ctx.lineWidth = 0.5;
+    for (let xi = Math.ceil(XMIN); xi <= XMAX; xi++) {
+      ctx.beginPath();
+      ctx.moveTo(toX(xi), MT);
+      ctx.lineTo(toX(xi), MAIN_H - MB);
+      ctx.stroke();
+    }
+    for (let yi = Math.ceil(YMIN); yi <= YMAX; yi++) {
+      ctx.beginPath();
+      ctx.moveTo(ML, toY(yi));
+      ctx.lineTo(MAIN_W - MR, toY(yi));
+      ctx.stroke();
+    }
+
+    // Axes
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.2;
+    const ox = toX(0), oy = toY(0);
+    // x-axis
+    ctx.beginPath();
+    ctx.moveTo(ML, oy);
+    ctx.lineTo(MAIN_W - MR, oy);
+    ctx.stroke();
+    // y-axis
+    ctx.beginPath();
+    ctx.moveTo(ox, MT);
+    ctx.lineTo(ox, MAIN_H - MB);
+    ctx.stroke();
+
+    // Axis arrows
+    ctx.fillStyle = '#94a3b8';
+    // x arrow
+    ctx.beginPath();
+    ctx.moveTo(MAIN_W - MR, oy);
+    ctx.lineTo(MAIN_W - MR - 8, oy - 4);
+    ctx.lineTo(MAIN_W - MR - 8, oy + 4);
+    ctx.fill();
+    // y arrow
+    ctx.beginPath();
+    ctx.moveTo(ox, MT);
+    ctx.lineTo(ox - 4, MT + 8);
+    ctx.lineTo(ox + 4, MT + 8);
+    ctx.fill();
+
+    // Tick labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let xi = Math.ceil(XMIN); xi <= XMAX; xi++) {
+      if (xi === 0) continue;
+      ctx.fillText(xi, toX(xi), oy + 6);
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let yi = Math.ceil(YMIN); yi <= YMAX; yi++) {
+      if (yi === 0) continue;
+      ctx.fillText(yi, ox - 6, toY(yi));
+    }
+    // origin
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('O', ox - 5, oy + 4);
+
+    // Axis labels
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'italic 12px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('x', MAIN_W - MR - 4, oy - 14);
+    ctx.fillText('y', ox + 14, MT + 2);
+
+    // ── The line L ──
+    const lx1 = toX(XMIN), ly1 = toY(LINE_SLOPE * XMIN + LINE_INTERCEPT);
+    const lx2 = toX(XMAX), ly2 = toY(LINE_SLOPE * XMAX + LINE_INTERCEPT);
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly1);
+    ctx.lineTo(lx2, ly2);
+    ctx.stroke();
+
+    // Line label
+    ctx.fillStyle = '#3b82f6';
+    ctx.font = 'italic 12px -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    const labelX = toX(3.8), labelY = toY(LINE_SLOPE * 3.8 + LINE_INTERCEPT);
+    ctx.fillText('L: y = ¾x + 3', labelX + 6, labelY - 4);
+
+    // ── Current point P on the line ──
+    const px = m;
+    const py = LINE_SLOPE * m + LINE_INTERCEPT;
+    const cpx = toX(px), cpy = toY(py);
+
+    // ── Chebyshev distance d ──
+    const dx = Math.abs(px - D.x);  // |m|
+    const dy = Math.abs(py - D.y);  // |3m/4 + 2|
+    const d = Math.max(dx, dy);
+
+    // ── Chebyshev "square" (L∞ ball) centered at D ──
+    const sqLeft = toX(D.x - d), sqRight = toX(D.x + d);
+    const sqTop = toY(D.y + d), sqBottom = toY(D.y - d);
+    const sqW = sqRight - sqLeft, sqH = sqBottom - sqTop;
+
+    // Fill
+    ctx.fillStyle = 'rgba(59,130,246,0.07)';
+    ctx.fillRect(sqLeft, sqTop, sqW, sqH);
+    // Stroke
+    ctx.strokeStyle = 'rgba(59,130,246,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(sqLeft, sqTop, sqW, sqH);
+    ctx.setLineDash([]);
+
+    // ── Projection lines from D to P ──
+    // First draw the thinner projection lines
+    const dCx = toX(D.x), dCy = toY(D.y);
+
+    // Horizontal projection: from D(0,1) to (m, 1)
+    const hProjX = toX(px), hProjY = toY(D.y);
+    ctx.strokeStyle = dx >= dy ? '#ef4444' : '#fca5a5';
+    ctx.lineWidth = dx >= dy ? 2 : 1.2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(dCx, dCy);
+    ctx.lineTo(hProjX, hProjY);
+    ctx.stroke();
+    // small dot at the corner
+    ctx.fillStyle = dx >= dy ? '#ef4444' : '#fca5a5';
+    ctx.beginPath();
+    ctx.arc(hProjX, hProjY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Vertical projection: from (m, 1) to (m, 3m/4+3)
+    const vProjX = toX(px), vProjY = toY(py);
+    ctx.strokeStyle = dy >= dx ? '#8b5cf6' : '#c4b5fd';
+    ctx.lineWidth = dy >= dx ? 2 : 1.2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(hProjX, hProjY);
+    ctx.lineTo(vProjX, vProjY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Dimension labels on projection lines
+    ctx.font = 'bold 11px "SF Mono", "JetBrains Mono", monospace';
+    ctx.textBaseline = 'middle';
+    const midHX = (dCx + hProjX) / 2;
+    const midHY = dCy;
+    ctx.fillStyle = dx >= dy ? '#ef4444' : '#fca5a5';
+    ctx.textAlign = 'center';
+    ctx.fillText('|Δx|=' + dx.toFixed(2), midHX, midHY - 14);
+
+    const midVX = vProjX;
+    const midVY = (hProjY + vProjY) / 2;
+    ctx.fillStyle = dy >= dx ? '#8b5cf6' : '#c4b5fd';
+    ctx.textAlign = 'left';
+    ctx.fillText('|Δy|=' + dy.toFixed(2), midVX + 6, midVY);
+
+    // ── Point D ──
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(dCx, dCy, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Label
+    ctx.fillStyle = '#ef4444';
+    ctx.font = 'bold 12px -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('D(0, 1)', dCx - 8, dCy + 8);
+
+    // ── Point P (on the line) ──
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(cpx, cpy, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label for P — position depends on location to avoid overlap
+    const pLabelX = px > 0 ? cpx - 10 : cpx + 10;
+    const pLabelY = py > D.y ? cpy - 10 : cpy + 18;
+    ctx.fillStyle = '#d97706';
+    ctx.font = 'bold 11px -apple-system, sans-serif';
+    ctx.textAlign = px > 0 ? 'right' : 'left';
+    ctx.textBaseline = py > D.y ? 'bottom' : 'top';
+    ctx.fillText(`P(${px.toFixed(2)}, ${py.toFixed(2)})`, pLabelX, pLabelY);
+
+    // ── d label on the square edge ──
+    ctx.fillStyle = '#3b82f6';
+    ctx.font = 'bold 11px -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    const dLabelX = sqRight, dLabelY = sqTop;
+    ctx.fillText('d=' + d.toFixed(2), dLabelX + 4, dLabelY - 2);
+
+    // ── Minimum point marker (always visible) ──
+    const minCx = toX(MIN_P.x), minCy = toY(MIN_P.y);
+    const nearMin = Math.abs(m - MIN_M) < 0.06;
+
+    // Persistent small marker at the minimum point
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(minCx, minCy, nearMin ? 9 : 5, 0, Math.PI * 2);
+    ctx.fill();
+    if (nearMin) {
+      // Pulsing ring
+      ctx.strokeStyle = 'rgba(16,185,129,0.4)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(minCx, minCy, 14, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = nearMin ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.arc(minCx, minCy, nearMin ? 9 : 5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Label for min point
+    ctx.fillStyle = '#065f46';
+    ctx.font = 'bold 10px -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`P_min(−8/7, 15/7)`, minCx + 10, minCy + 6);
+
+    // ── Legend ──
+    const lx0 = ML + 10, ly0 = MT + 10;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillRect(lx0, ly0, 170, 72);
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 0.8;
+    ctx.setLineDash([]);
+    ctx.strokeRect(lx0, ly0, 170, 72);
+
+    const items = [
+      { color: '#ef4444', text: '点 D(0,1)', x: lx0 + 6, y: ly0 + 16 },
+      { color: '#3b82f6', text: '识别距离方体', x: lx0 + 6, y: ly0 + 33, dash: true },
+      { color: '#10b981', text: '极小值点', x: lx0 + 6, y: ly0 + 50 },
+    ];
+    items.forEach(it => {
+      if (it.dash) {
+        ctx.strokeStyle = 'rgba(59,130,246,0.5)';
+        ctx.lineWidth = 1.2;
+        ctx.setLineDash([3, 2]);
+        ctx.strokeRect(it.x + 2, it.y - 5, 14, 10);
+        ctx.setLineDash([]);
+      } else {
+        ctx.fillStyle = it.color;
+        ctx.beginPath();
+        ctx.arc(it.x + 9, it.y + 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#334155';
+      ctx.font = '11px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(it.text, it.x + 22, it.y);
+    });
+  }
+
+  // ─── Draw distance graph ────────────────────
+  function drawDist() {
+    const ctx = distCtx;
+    ctx.clearRect(0, 0, DIST_W, DIST_H);
+
+    // Grid
+    ctx.strokeStyle = '#eaeae2';
+    ctx.lineWidth = 0.5;
+    for (let xi = Math.ceil(DXMIN); xi <= DXMAX; xi++) {
+      ctx.beginPath();
+      ctx.moveTo(dToX(xi), DT);
+      ctx.lineTo(dToX(xi), DIST_H - DB);
+      ctx.stroke();
+    }
+    for (let yi = 0; yi <= DYMAX; yi++) {
+      ctx.beginPath();
+      ctx.moveTo(DL, dToY(yi));
+      ctx.lineTo(DIST_W - DR, dToY(yi));
+      ctx.stroke();
+    }
+
+    // Axes
+    const dox = dToX(0), doy = dToY(0);
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(DL, doy);
+    ctx.lineTo(DIST_W - DR, doy);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(dox, DT);
+    ctx.lineTo(dox, DIST_H - DB);
+    ctx.stroke();
+
+    // Tick labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let xi = Math.ceil(DXMIN); xi <= DXMAX; xi++) {
+      if (xi === 0) continue;
+      ctx.fillText(xi, dToX(xi), doy + 5);
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let yi = 0; yi <= DYMAX; yi++) {
+      if (yi === 0) continue;
+      ctx.fillText(yi, dox - 6, dToY(yi));
+    }
+    // origin
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('O', dox - 4, doy + 3);
+
+    // Axis labels
+    ctx.fillStyle = '#64748b';
+    ctx.font = 'italic 11px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('m', DIST_W - DR - 4, doy - 12);
+    ctx.fillText('d', dox + 14, DT + 2);
+
+    // Plot |Δx| = |m|
+    ctx.strokeStyle = 'rgba(239,68,68,0.45)';
+    ctx.lineWidth = 1.3;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    const steps = 400;
+    for (let i = 0; i <= steps; i++) {
+      const mx = DXMIN + (DXMAX - DXMIN) * i / steps;
+      const dy = Math.abs(mx);
+      const sx = dToX(mx), sy = dToY(Math.min(dy, DYMAX));
+      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Label
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '10px -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('|Δx| = |m|', dToX(-4.8), dToY(4.3));
+
+    // Plot |Δy| = |3m/4 + 2|
+    ctx.strokeStyle = 'rgba(139,92,246,0.45)';
+    ctx.lineWidth = 1.3;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const mx = DXMIN + (DXMAX - DXMIN) * i / steps;
+      const dy = Math.abs(LINE_SLOPE * mx + (LINE_INTERCEPT - D.y));
+      const sx = dToX(mx), sy = dToY(Math.min(dy, DYMAX));
+      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Label
+    ctx.fillStyle = '#8b5cf6';
+    ctx.textAlign = 'left';
+    ctx.fillText('|Δy| = |¾m + 2|', dToX(-4.8), dToY(3.6));
+
+    // Plot d(m) = max(|Δx|, |Δy|)
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2.2;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const mx = DXMIN + (DXMAX - DXMIN) * i / steps;
+      const dxv = Math.abs(mx);
+      const dyv = Math.abs(LINE_SLOPE * mx + (LINE_INTERCEPT - D.y));
+      const dv = Math.max(dxv, dyv);
+      const sx = dToX(mx), sy = dToY(Math.min(dv, DYMAX));
+      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    // Label
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 10px -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('d(m) = max(|Δx|, |Δy|)', dToX(4.8), dToY(3.0));
+
+    // ── Minimum point marker ──
+    const minSx = dToX(MIN_M), minSy = dToY(MIN_D);
+    // vertical dashed line
+    ctx.strokeStyle = 'rgba(16,185,129,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(minSx, DT);
+    ctx.lineTo(minSx, DIST_H - DB);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // dot
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.arc(minSx, minSy, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // label
+    ctx.fillStyle = '#065f46';
+    ctx.font = 'bold 10px -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('min: d=8/7', minSx + 8, minSy - 6);
+
+    // ── Current position dot ──
+    const cdx = Math.abs(m);
+    const cdy = Math.abs(LINE_SLOPE * m + (LINE_INTERCEPT - D.y));
+    const cd = Math.max(cdx, cdy);
+    const curSx = dToX(m), curSy = dToY(Math.min(cd, DYMAX));
+
+    // vertical line showing current m
+    ctx.strokeStyle = 'rgba(245,158,11,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath();
+    ctx.moveTo(curSx, DT);
+    ctx.lineTo(curSx, DIST_H - DB);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(curSx, curSy, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Show which component dominates in the graph area
+    const dominantLabel = cdx >= cdy ? '|Δx| 主导' : '|Δy| 主导';
+    const domColor = cdx >= cdy ? '#ef4444' : '#8b5cf6';
+    ctx.fillStyle = domColor;
+    ctx.font = 'bold 10px -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(dominantLabel, dToX(4.8), dToY(0.5));
+  }
+
+  // ─── Update info panel ──────────────────────
+  function updateInfo() {
+    const py = LINE_SLOPE * m + LINE_INTERCEPT;
+    const dx = Math.abs(m);
+    const dy = Math.abs(py - D.y);
+    const d = Math.max(dx, dy);
+
+    document.getElementById('infoM').textContent = m.toFixed(3);
+    document.getElementById('infoP').textContent = `(${m.toFixed(3)}, ${py.toFixed(3)})`;
+    document.getElementById('infoDx').textContent = dx.toFixed(3);
+    document.getElementById('infoDy').textContent = dy.toFixed(3);
+    document.getElementById('infoD').textContent = d.toFixed(3);
+
+    const nearMin = Math.abs(m - MIN_M) < 0.04;
+    if (nearMin) {
+      infoMinHint.classList.remove('hidden');
+      document.getElementById('infoD').classList.add('min');
+    } else {
+      infoMinHint.classList.add('hidden');
+      document.getElementById('infoD').classList.remove('min');
+    }
+
+    // Highlight which component is the recognition distance
+    const dxEl = document.getElementById('infoDx');
+    const dyEl = document.getElementById('infoDy');
+    dxEl.style.fontWeight = (dx >= dy) ? '800' : '500';
+    dyEl.style.fontWeight = (dy >= dx) ? '800' : '500';
+  }
+
+  // ─── Update slider ──────────────────────────
+  function updateSlider() {
+    // Map m ∈ [-5, 5] to slider [0, 100]
+    const pct = (m - M_MIN_RANGE) / (M_MAX_RANGE - M_MIN_RANGE) * 200;
+    sliderM.value = Math.round(pct);
+    valM.textContent = m.toFixed(2);
+  }
+
+  // ─── Render all ─────────────────────────────
+  function render() {
+    drawMain();
+    drawDist();
+    updateInfo();
+  }
+
+  // ─── Animation loop ─────────────────────────
+  function animate(timestamp) {
+    if (lastTime === null) lastTime = timestamp;
+    let dt = (timestamp - lastTime) / 1000; // seconds
+    if (dt > 0.1) dt = 0.1; // cap to avoid jumps
+    lastTime = timestamp;
+
+    if (playing) {
+      m += direction * speed * dt;
+
+      if (autoReverse) {
+        if (m >= M_MAX_RANGE) { m = M_MAX_RANGE; direction = -1; }
+        if (m <= M_MIN_RANGE) { m = M_MIN_RANGE; direction = 1; }
+      } else {
+        if (m >= M_MAX_RANGE) { m = M_MIN_RANGE; } // wrap
+        if (m <= M_MIN_RANGE) { m = M_MAX_RANGE; }
+      }
+    }
+
+    updateSlider();
+    render();
+    requestAnimationFrame(animate);
+  }
+
+  // ─── Event handlers ─────────────────────────
+  btnPlay.addEventListener('click', () => {
+    playing = !playing;
+    btnPlay.textContent = playing ? '⏸ 暂停' : '▶ 播放';
+    if (playing) btnPlay.classList.add('active');
+    else btnPlay.classList.remove('active');
+    lastTime = null;
+  });
+  // initial state
+  btnPlay.textContent = '⏸ 暂停';
+  btnPlay.classList.add('active');
+
+  btnReverse.addEventListener('click', () => {
+    autoReverse = !autoReverse;
+    if (autoReverse) {
+      btnReverse.classList.add('active');
+    } else {
+      btnReverse.classList.remove('active');
+    }
+  });
+  btnReverse.classList.add('active');
+
+  document.getElementById('btnRewind').addEventListener('click', () => {
+    m = M_MIN_RANGE;
+    direction = 1;
+    lastTime = null;
+    render();
+  });
+
+  document.getElementById('btnMin').addEventListener('click', () => {
+    m = MIN_M;
+    playing = false;
+    btnPlay.textContent = '▶ 播放';
+    btnPlay.classList.remove('active');
+    lastTime = null;
+    updateSlider();
+    render();
+    infoMinHint.classList.remove('hidden');
+    setTimeout(() => {
+      if (Math.abs(m - MIN_M) > 0.05) infoMinHint.classList.add('hidden');
+    }, 3000);
+  });
+
+  // Speed buttons
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      speed = parseFloat(btn.dataset.speed);
+      lastTime = null;
+    });
+  });
+
+  // Slider
+  sliderM.addEventListener('input', () => {
+    playing = false;
+    btnPlay.textContent = '▶ 播放';
+    btnPlay.classList.remove('active');
+    const pct = parseFloat(sliderM.value) / 200;
+    m = M_MIN_RANGE + pct * (M_MAX_RANGE - M_MIN_RANGE);
+    valM.textContent = m.toFixed(2);
+    lastTime = null;
+    render();
+  });
+
+  // Keyboard controls
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    switch (e.key) {
+      case ' ':
+        e.preventDefault();
+        btnPlay.click();
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        m = Math.max(M_MIN_RANGE, m - 0.1);
+        playing = false;
+        btnPlay.textContent = '▶ 播放';
+        btnPlay.classList.remove('active');
+        lastTime = null;
+        updateSlider();
+        render();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        m = Math.min(M_MAX_RANGE, m + 0.1);
+        playing = false;
+        btnPlay.textContent = '▶ 播放';
+        btnPlay.classList.remove('active');
+        lastTime = null;
+        updateSlider();
+        render();
+        break;
+      case 'm':
+        e.preventDefault();
+        document.getElementById('btnMin').click();
+        break;
+    }
+  });
+
+  // ─── Handle DPI ─────────────────────────────
+  function setupCanvas(canvas, ctx, w, h) {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Store logical size
+    canvas._w = w;
+    canvas._h = h;
+  }
+
+  // Re-setup canvases for HiDPI
+  (function setupHiDPI() {
+    const dpr = window.devicePixelRatio || 1;
+    [mainCanvas, distCanvas].forEach(c => {
+      const w = parseInt(c.getAttribute('width'));
+      const h = parseInt(c.getAttribute('height'));
+      c.width = w * dpr;
+      c.height = h * dpr;
+      c.style.width = w + 'px';
+      c.style.height = h + 'px';
+      c.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    });
+  })();
+
+  // ─── Start ──────────────────────────────────
+  updateSlider();
+  render();
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>

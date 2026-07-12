@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火车轮子运动轨迹演示</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 8px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .all-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        button {
+            padding: 4px 8px;
+            font-size: 11px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 40px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .start-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+        }
+        
+        .reset-btn {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+        }
+        
+        input[type="range"] {
+            width: 80px;
+        }
+        
+        .control-group input[type="range"] {
+            width: 70px;
+        }
+        
+        .control-group:last-child input[type="range"] {
+            width: 280px;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        label {
+            font-size: 10px;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .control-group span {
+            font-size: 10px;
+            color: #764ba2;
+            min-width: 25px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        #canvas {
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+        
+        .legend-item span {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .info {
+            margin-top: 15px;
+            padding: 12px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+            backdrop-filter: blur(5px);
+        }
+        
+        .info h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .info p {
+            margin: 3px 0;
+            color: #5a67d8;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>火车轮子运动轨迹演示</h1>
+        
+        <div class="all-controls">
+            <button id="startBtn" class="start-btn">开始</button>
+            <button id="stopBtn" class="stop-btn">停止</button>
+            <button id="resetBtn" class="reset-btn">重置</button>
+            
+            <div class="control-group">
+                <label for="speedSlider">速度</label>
+                <input type="range" id="speedSlider" min="0.5" max="3" step="0.1" value="1">
+                <span id="speedValue">1.0</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="radiusSlider">半径</label>
+                <input type="range" id="radiusSlider" min="30" max="80" step="5" value="50">
+                <span id="radiusValue">50</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="flangeSizeSlider">外沿</label>
+                <input type="range" id="flangeSizeSlider" min="10" max="35" step="1" value="20">
+                <span id="flangeSizeValue">20</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="progressSlider">进度</label>
+                <input type="range" id="progressSlider" min="0" max="100" step="0.1" value="0">
+                <span id="progressValue">0%</span>
+            </div>
+        </div>
+        
+        <canvas id="canvas" width="1000" height="400"></canvas>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #e53e3e;"></div>
+                <span>轮轴中心</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #38a169;"></div>
+                <span>接触点</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #3182ce;"></div>
+                <span>边沿点</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #805ad5;"></div>
+                <span>内部点</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ed8936;"></div>
+                <span>外沿点</span>
+            </div>
+        </div>
+        
+        <div class="info">
+            <h3>运动轨迹说明</h3>
+            <p><strong>轮轴中心（红色）：</strong>沿直线运动</p>
+            <p><strong>接触点（绿色）：</strong>沿轨道水平直线运动</p>
+            <p><strong>边沿点（蓝色）：</strong>摆线运动，底部会出现尖点</p>
+            <p><strong>内部点（紫色）：</strong>缩短摆线，不接触轨道</p>
+            <p><strong>外沿点（橙色）：</strong>延长摆线，会出现<strong>反向运动</strong>现象</p>
+        </div>
+    </div>
+    
+    <script>
+class WheelAnimation {
+    constructor() {
+        this.canvas = document.getElementById('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // 动画参数
+        this.animationId = null;
+        this.isAnimating = false;
+        this.time = 0;
+        this.speed = 1.0;
+        
+        // 轮子参数
+        this.wheelRadius = 50;
+        this.flangeSize = 20;
+        this.railHeight = 320;
+        this.wheelCenterY = this.railHeight - this.wheelRadius;
+        this.wheelCenterX = this.wheelRadius + 50;
+        
+        // 进度控制
+        this.manualMode = false;
+        this.totalCycles = 2; // 总共显示2个完整周期
+        this.cycleLength = Math.PI * 2; // 一个完整周期的角度
+        
+        // 轨迹存储
+        this.trajectories = {
+            center: [],
+            contact: [],
+            rim: [],
+            inner: [],
+            flange: []
+        };
+        
+        // 轨迹颜色 - 更优雅的配色
+        this.colors = {
+            center: '#e53e3e',     // 温暖的红色
+            contact: '#38a169',    // 自然的绿色
+            rim: '#3182ce',        // 深海蓝
+            inner: '#805ad5',      // 优雅的紫色
+            flange: '#ed8936'      // 温暖的橙色
+        };
+        
+        // 最大轨迹点数
+        this.maxTrajectoryPoints = 800;
+        
+        // 轨迹显示设置
+        this.showTrajectories = {
+            center: true,
+            contact: true,
+            rim: true,
+            inner: true,
+            flange: true
+        };
+        
+        // 速度箭头设置
+        this.showVelocityArrow = true;
+        this.velocityScale = 0.5; // 速度箭头缩放比例（从10减少到0.5，即20分之一）
+        
+        // 拖动控制
+        this.isDragging = false;
+        this.lastMouseX = 0;
+        this.dragSensitivity = 0.5; // 拖动敏感度
+        this.isDragMode = false; // 是否处于拖动模式
+        
+        this.initializeControls();
+        this.initializeDragControls();
+        this.draw();
+    }
+    
+    initializeControls() {
+        // 开始按钮
+        document.getElementById('startBtn').addEventListener('click', () => {
+            this.startAnimation();
+        });
+        
+        // 停止按钮
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            this.stopAnimation();
+        });
+        
+        // 重置按钮
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            this.resetAnimation();
+        });
+        
+        // 速度滑块
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        speedSlider.addEventListener('input', (e) => {
+            this.speed = parseFloat(e.target.value);
+            speedValue.textContent = this.speed.toFixed(1);
+        });
+        
+        // 轮子半径滑块
+        const radiusSlider = document.getElementById('radiusSlider');
+        const radiusValue = document.getElementById('radiusValue');
+        radiusSlider.addEventListener('input', (e) => {
+            this.wheelRadius = parseInt(e.target.value);
+            radiusValue.textContent = this.wheelRadius;
+            this.wheelCenterY = this.railHeight - this.wheelRadius;
+            this.resetTrajectories();
+        });
+        
+        // 外沿大小滑块
+        const flangeSizeSlider = document.getElementById('flangeSizeSlider');
+        const flangeSizeValue = document.getElementById('flangeSizeValue');
+        flangeSizeSlider.addEventListener('input', (e) => {
+            this.flangeSize = parseInt(e.target.value);
+            flangeSizeValue.textContent = this.flangeSize;
+            this.resetTrajectories();
+        });
+        
+        // 进度条控制
+        const progressSlider = document.getElementById('progressSlider');
+        const progressValue = document.getElementById('progressValue');
+        progressSlider.addEventListener('input', (e) => {
+            const progress = parseFloat(e.target.value);
+            progressValue.textContent = progress.toFixed(1) + '%';
+            this.setProgress(progress);
+        });
+        
+        // 进度条拖拽时暂停动画
+        progressSlider.addEventListener('mousedown', () => {
+            this.manualMode = true;
+            this.stopAnimation();
+        });
+        
+        progressSlider.addEventListener('mouseup', () => {
+            // 延迟500ms后恢复自动模式，给用户时间观察
+            setTimeout(() => {
+                this.manualMode = false;
+            }, 500);
+        });
+    }
+    
+    initializeDragControls() {
+        // 鼠标按下事件
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (this.isMouseOverWheel(e)) {
+                this.isDragging = true;
+                this.isDragMode = true;
+                this.lastMouseX = e.clientX;
+                this.stopAnimation(); // 停止自动动画
+                this.canvas.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        });
+        
+        // 鼠标移动事件
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.isDragging) {
+                const deltaX = e.clientX - this.lastMouseX;
+                this.handleWheelDrag(deltaX);
+                this.lastMouseX = e.clientX;
+            } else if (this.isMouseOverWheel(e)) {
+                this.canvas.style.cursor = 'grab';
+            } else {
+                this.canvas.style.cursor = 'default';
+            }
+        });
+        
+        // 鼠标释放事件
+        this.canvas.addEventListener('mouseup', () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                this.canvas.style.cursor = 'default';
+                // 延迟退出拖动模式，避免立即重新开始动画
+                setTimeout(() => {
+                    this.isDragMode = false;
+                }, 100);
+            }
+        });
+        
+        // 鼠标离开canvas事件
+        this.canvas.addEventListener('mouseleave', () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                this.canvas.style.cursor = 'default';
+                setTimeout(() => {
+                    this.isDragMode = false;
+                }, 100);
+            }
+        });
+        
+        // 触摸事件支持
+        this.canvas.addEventListener('touchstart', (e) => {
+            if (this.isTouchOverWheel(e)) {
+                this.isDragging = true;
+                this.isDragMode = true;
+                this.lastMouseX = e.touches[0].clientX;
+                this.stopAnimation();
+                e.preventDefault();
+            }
+        });
+        
+        this.canvas.addEventListener('touchmove', (e) => {
+            if (this.isDragging) {
+                const deltaX = e.touches[0].clientX - this.lastMouseX;
+                this.handleWheelDrag(deltaX);
+                this.lastMouseX = e.touches[0].clientX;
+                e.preventDefault();
+            }
+        });
+        
+        this.canvas.addEventListener('touchend', () => {
+            if (this.isDragging) {
+                this.isDragging = false;
+                setTimeout(() => {
+                    this.isDragMode = false;
+                }, 100);
+            }
+        });
+    }
+    
+    isMouseOverWheel(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // 计算鼠标到轮子中心的距离
+        const dx = mouseX - this.wheelCenterX;
+        const dy = mouseY - this.wheelCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // 检查是否在轮子（包括外沿）范围内
+        return distance <= (this.wheelRadius + this.flangeSize);
+    }
+    
+    isTouchOverWheel(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        const touchY = e.touches[0].clientY - rect.top;
+        
+        // 计算触摸点到轮子中心的距离
+        const dx = touchX - this.wheelCenterX;
+        const dy = touchY - this.wheelCenterY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // 检查是否在轮子（包括外沿）范围内
+        return distance <= (this.wheelRadius + this.flangeSize);
+    }
+    
+    handleWheelDrag(deltaX) {
+        // 将横向拖动转换为轮子滚动
+        // 拖动距离与轮子旋转角度的关系：angle = distance / radius
+        const angleChange = (deltaX * this.dragSensitivity) / this.wheelRadius;
+        
+        // 更新时间（角度）
+        this.time += angleChange;
+        
+        // 确保时间不会小于0
+        if (this.time < 0) {
+            this.time = 0;
+        }
+        
+        // 限制最大时间（对应100%进度）
+        const maxTime = this.totalCycles * this.cycleLength;
+        if (this.time > maxTime) {
+            this.time = maxTime;
+        }
+        
+        // 更新轮子位置
+        this.wheelCenterX = this.wheelRadius + 50 + this.time * this.wheelRadius;
+        
+        // 重新计算轨迹
+        this.updateTrajectoryFromDrag();
+        
+        // 更新进度条
+        this.updateProgressSlider();
+        
+        // 重绘画面
+        this.draw();
+    }
+    
+    updateTrajectoryFromDrag() {
+        // 清除当前轨迹
+        this.resetTrajectories();
+        
+        // 重新计算轨迹点（分段计算以获得平滑轨迹）
+        const steps = Math.min(400, Math.floor(this.time * 20));
+        for (let i = 0; i <= steps; i++) {
+            const t = (i / steps) * this.time;
+            const x = this.wheelRadius + 50 + t * this.wheelRadius;
+            
+            // 临时设置位置来计算轨迹
+            const originalX = this.wheelCenterX;
+            const originalTime = this.time;
+            this.wheelCenterX = x;
+            this.time = t;
+            
+            this.updateTrajectories();
+            
+            // 恢复原始位置
+            this.wheelCenterX = originalX;
+            this.time = originalTime;
+        }
+    }
+    
+    setProgress(progress) {
+        // 将进度百分比转换为时间和位置
+        const totalTime = this.totalCycles * this.cycleLength;
+        this.time = (progress / 100) * totalTime;
+        
+        // 计算轮子位置
+        this.wheelCenterX = this.wheelRadius + 50 + this.time * this.wheelRadius;
+        
+        // 重置轨迹并重新计算到当前位置
+        this.resetTrajectories();
+        
+        // 计算轨迹点（分段计算以获得平滑轨迹）
+        const steps = Math.min(200, Math.floor(this.time * 20));
+        for (let i = 0; i <= steps; i++) {
+            const t = (i / steps) * this.time;
+            const x = this.wheelRadius + 50 + t * this.wheelRadius;
+            
+            // 临时设置位置来计算轨迹
+            const originalX = this.wheelCenterX;
+            const originalTime = this.time;
+            this.wheelCenterX = x;
+            this.time = t;
+            
+            this.updateTrajectories();
+            
+            // 恢复原始位置
+            this.wheelCenterX = originalX;
+            this.time = originalTime;
+        }
+        
+        this.draw();
+    }
+    
+    updateProgressSlider() {
+        if (!this.manualMode && !this.isDragMode) {
+            const totalTime = this.totalCycles * this.cycleLength;
+            const progress = (this.time % totalTime) / totalTime * 100;
+            
+            const progressSlider = document.getElementById('progressSlider');
+            const progressValue = document.getElementById('progressValue');
+            
+            progressSlider.value = progress;
+            progressValue.textContent = progress.toFixed(1) + '%';
+        }
+    }
+    
+    startAnimation() {
+        if (!this.isAnimating && !this.isDragMode) {
+            this.isAnimating = true;
+            this.manualMode = false;
+            this.animate();
+        }
+    }
+    
+    stopAnimation() {
+        this.isAnimating = false;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+    }
+    
+    resetAnimation() {
+        this.stopAnimation();
+        this.time = 0;
+        this.wheelCenterX = this.wheelRadius + 50;
+        this.resetTrajectories();
+        this.draw();
+    }
+    
+    resetTrajectories() {
+        this.trajectories = {
+            center: [],
+            contact: [],
+            rim: [],
+            inner: [],
+            flange: []
+        };
+    }
+    
+    animate() {
+        if (!this.isAnimating) return;
+        
+        this.time += this.speed * 0.02;
+        
+        // 计算轮子中心位置
+        this.wheelCenterX = this.wheelRadius + 50 + this.time * this.wheelRadius;
+        
+        // 检查是否到达最大进度（100%），自动停止
+        const totalTime = this.totalCycles * this.cycleLength;
+        if (this.time >= totalTime) {
+            this.time = totalTime;
+            this.wheelCenterX = this.wheelRadius + 50 + this.time * this.wheelRadius;
+            this.isAnimating = false;
+            this.updateTrajectories();
+            this.updateProgressSlider();
+            this.draw();
+            return;
+        }
+        
+        // 如果轮子移出画布，重置位置
+        if (this.wheelCenterX > this.canvas.width + this.wheelRadius) {
+            this.wheelCenterX = -this.wheelRadius;
+            this.resetTrajectories();
+        }
+        
+        // 更新轨迹
+        this.updateTrajectories();
+        
+        // 更新进度条
+        this.updateProgressSlider();
+        
+        // 绘制
+        this.draw();
+        
+        this.animationId = requestAnimationFrame(() => this.animate());
+    }
+    
+    updateTrajectories() {
+        // 轮子旋转角度（顺时针旋转）
+        const angle = this.time;
+        
+        // 轮轴中心轨迹
+        this.addTrajectoryPoint('center', this.wheelCenterX, this.wheelCenterY);
+        
+        // 接触点轨迹（轮子底部与轨道接触的点）
+        this.addTrajectoryPoint('contact', this.wheelCenterX, this.railHeight);
+        
+        // 边沿点轨迹（摆线运动）
+        const rimX = this.wheelCenterX - this.wheelRadius * Math.sin(angle);
+        const rimY = this.wheelCenterY + this.wheelRadius * Math.cos(angle);
+        this.addTrajectoryPoint('rim', rimX, rimY);
+        
+        // 内部点轨迹（半径的一半）
+        const innerRadius = this.wheelRadius * 0.5;
+        const innerX = this.wheelCenterX - innerRadius * Math.sin(angle);
+        const innerY = this.wheelCenterY + innerRadius * Math.cos(angle);
+        this.addTrajectoryPoint('inner', innerX, innerY);
+        
+        // 外沿点轨迹（延长摆线，会出现反向运动）
+        const flangeRadius = this.wheelRadius + this.flangeSize;
+        const flangeX = this.wheelCenterX - flangeRadius * Math.sin(angle);
+        const flangeY = this.wheelCenterY + flangeRadius * Math.cos(angle);
+        this.addTrajectoryPoint('flange', flangeX, flangeY);
+    }
+    
+    addTrajectoryPoint(type, x, y) {
+        this.trajectories[type].push({ x, y });
+        
+        // 限制轨迹点数量
+        if (this.trajectories[type].length > this.maxTrajectoryPoints) {
+            this.trajectories[type].shift();
+        }
+    }
+    
+    draw() {
+        // 清空画布
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // 绘制轨道
+        this.drawRail();
+        
+        // 绘制轨迹
+        this.drawTrajectories();
+        
+        // 绘制轮子
+        this.drawWheel();
+        
+        // 绘制追踪点
+        this.drawTrackingPoints();
+    }
+    
+    drawRail() {
+        this.ctx.strokeStyle = '#8B4513';
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.railHeight);
+        this.ctx.lineTo(this.canvas.width, this.railHeight);
+        this.ctx.stroke();
+    }
+    
+    drawTrajectories() {
+        Object.keys(this.trajectories).forEach(type => {
+            if (!this.showTrajectories[type]) return;
+            
+            const trajectory = this.trajectories[type];
+            if (trajectory.length < 2) return;
+            
+            // 绘制完整轨迹，不使用渐变效果
+            this.ctx.strokeStyle = this.colors[type];
+            this.ctx.lineWidth = 2;
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            this.ctx.beginPath();
+            
+            trajectory.forEach((point, index) => {
+                if (index === 0) {
+                    this.ctx.moveTo(point.x, point.y);
+                } else {
+                    this.ctx.lineTo(point.x, point.y);
+                }
+            });
+            
+            this.ctx.stroke();
+        });
+    }
+    
+    hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
+    
+    drawWheel() {
+        // 根据拖动状态调整轮子的视觉效果
+        const wheelAlpha = this.isDragMode ? 0.6 : 0.4;
+        const strokeAlpha = this.isDragMode ? 0.7 : 0.5;
+        
+        // 绘制轮子外沿（法兰）- 半透明，拖动时稍微更明显
+        this.ctx.strokeStyle = `rgba(102, 102, 102, ${strokeAlpha * 0.8})`;
+        this.ctx.fillStyle = `rgba(187, 187, 187, ${wheelAlpha * 0.75})`;
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(this.wheelCenterX, this.wheelCenterY, this.wheelRadius + this.flangeSize, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // 绘制轮子主体 - 半透明，拖动时稍微更明显
+        this.ctx.strokeStyle = `rgba(51, 51, 51, ${strokeAlpha})`;
+        this.ctx.fillStyle = `rgba(221, 221, 221, ${wheelAlpha})`;
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(this.wheelCenterX, this.wheelCenterY, this.wheelRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // 绘制轮轴 - 稍微不透明一些
+        this.ctx.strokeStyle = `rgba(0, 0, 0, ${strokeAlpha + 0.2})`;
+        this.ctx.fillStyle = `rgba(51, 51, 51, ${wheelAlpha + 0.2})`;
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(this.wheelCenterX, this.wheelCenterY, 8, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // 绘制辐条 - 半透明，拖动时稍微更明显
+        const angle = this.time;
+        this.ctx.strokeStyle = `rgba(102, 102, 102, ${strokeAlpha * 0.8})`;
+        this.ctx.lineWidth = 2;
+        for (let i = 0; i < 6; i++) {
+            const spokeAngle = angle + (i * Math.PI / 3);
+            const spokeX = this.wheelCenterX + (this.wheelRadius - 10) * Math.cos(spokeAngle);
+            const spokeY = this.wheelCenterY + (this.wheelRadius - 10) * Math.sin(spokeAngle);
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.wheelCenterX, this.wheelCenterY);
+            this.ctx.lineTo(spokeX, spokeY);
+            this.ctx.stroke();
+        }
+        
+        // 如果正在拖动，绘制拖动提示
+        if (this.isDragMode) {
+            this.ctx.strokeStyle = 'rgba(79, 172, 254, 0.6)';
+            this.ctx.lineWidth = 3;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.beginPath();
+            this.ctx.arc(this.wheelCenterX, this.wheelCenterY, this.wheelRadius + this.flangeSize + 5, 0, Math.PI * 2);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]); // 重置虚线
+        }
+    }
+    
+    drawTrackingPoints() {
+        const angle = this.time;
+        
+        // 轮轴中心点
+        this.drawPoint(this.wheelCenterX, this.wheelCenterY, this.colors.center, 6);
+        
+        // 接触点
+        this.drawPoint(this.wheelCenterX, this.railHeight, this.colors.contact, 5);
+        
+        // 边沿点
+        const rimX = this.wheelCenterX - this.wheelRadius * Math.sin(angle);
+        const rimY = this.wheelCenterY + this.wheelRadius * Math.cos(angle);
+        this.drawPoint(rimX, rimY, this.colors.rim, 5);
+        
+        // 内部点
+        const innerRadius = this.wheelRadius * 0.5;
+        const innerX = this.wheelCenterX - innerRadius * Math.sin(angle);
+        const innerY = this.wheelCenterY + innerRadius * Math.cos(angle);
+        this.drawPoint(innerX, innerY, this.colors.inner, 4);
+        
+        // 外沿点
+        const flangeRadius = this.wheelRadius + this.flangeSize;
+        const flangeX = this.wheelCenterX - flangeRadius * Math.sin(angle);
+        const flangeY = this.wheelCenterY + flangeRadius * Math.cos(angle);
+        this.drawPoint(flangeX, flangeY, this.colors.flange, 5);
+        
+        // 绘制外沿点的速度箭头
+        if (this.showVelocityArrow) {
+            const horizontalVelocity = this.calculateFlangeVelocity(angle);
+            const arrowLength = horizontalVelocity * this.velocityScale;
+            // 固定箭头位置：轮子顶部上方固定距离
+            const fixedArrowY = this.wheelCenterY - this.wheelRadius - this.flangeSize - 30;
+            
+            // 绘制双色箭头
+            this.drawArrow(flangeX, fixedArrowY, arrowLength, Math.sign(horizontalVelocity));
+            
+            // 绘制速度值文本
+            const textColor = horizontalVelocity > 0 ? '#4facfe' : '#fa709a';
+            this.ctx.fillStyle = textColor;
+            this.ctx.font = '11px "Segoe UI", sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.fontWeight = '500';
+            const velocityText = `v = ${horizontalVelocity.toFixed(2)}`;
+            this.ctx.fillText(velocityText, flangeX, fixedArrowY - 18);
+        }
+    }
+    
+    drawPoint(x, y, color, size) {
+        this.ctx.fillStyle = color;
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, size, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+    }
+    
+    calculateFlangeVelocity(angle) {
+        // 外边沿点位置：x = wheelCenterX - flangeRadius * sin(angle)
+        // 横向速度 = dx/dt = wheelRadius - flangeRadius * cos(angle)
+        // 其中 wheelRadius 是轮子中心的横向速度
+        const flangeRadius = this.wheelRadius + this.flangeSize;
+        const horizontalVelocity = this.wheelRadius - flangeRadius * Math.cos(angle);
+        
+        return horizontalVelocity;
+    }
+    
+    drawArrow(x, y, length, direction, baseColor = '#ed8936', thickness = 3) {
+        if (Math.abs(length) < 0.1) return; // 速度太小时不绘制
+        
+        const arrowLength = Math.abs(length);
+        const arrowHeadSize = Math.min(arrowLength * 0.4, 12); // 增大箭头头部
+        
+        // 根据方向选择颜色
+        const forwardColor = '#4facfe';  // 向前：蓝色渐变
+        const backwardColor = '#fa709a'; // 向后：粉色渐变
+        const arrowColor = direction > 0 ? forwardColor : backwardColor;
+        
+        this.ctx.strokeStyle = arrowColor;
+        this.ctx.fillStyle = arrowColor;
+        this.ctx.lineWidth = thickness;
+        this.ctx.lineCap = 'round';
+        
+        // 绘制箭头主体
+        this.ctx.beginPath();
+        this.ctx.moveTo(x, y);
+        this.ctx.lineTo(x + length, y);
+        this.ctx.stroke();
+        
+        // 绘制更明显的箭头头部
+        if (arrowLength > 2) {
+            const headX = x + length;
+            const headDirection = direction > 0 ? 1 : -1;
+            
+            // 主箭头头部
+            this.ctx.beginPath();
+            this.ctx.moveTo(headX, y);
+            this.ctx.lineTo(headX - arrowHeadSize * headDirection, y - arrowHeadSize * 0.6);
+            this.ctx.lineTo(headX - arrowHeadSize * headDirection * 0.7, y);
+            this.ctx.lineTo(headX - arrowHeadSize * headDirection, y + arrowHeadSize * 0.6);
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            // 添加阴影效果
+            this.ctx.shadowColor = arrowColor;
+            this.ctx.shadowBlur = 6;
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+        }
+    }
+}
+
+// 初始化动画
+document.addEventListener('DOMContentLoaded', () => {
+    new WheelAnimation();
+});
+    </script>
+</body>
+</html>
